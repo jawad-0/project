@@ -11,12 +11,14 @@ const dashboardRoutes = require("./routes/dashboardRoutes");
 const metricsRoutes = require("./routes/metricsRoutes");
 const comparisonRoutes = require("./routes/comparisonRoutes");
 const performanceRoutes = require("./routes/performanceRoutes");
+const historyRoutes = require("./routes/historyRoutes");
 
 // Use routes
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/metrics", metricsRoutes);
 app.use("/api/comparison", comparisonRoutes);
 app.use("/api/performance", performanceRoutes);
+app.use("/api/history", historyRoutes);
 
 // Default route
 app.get("/", (req, res) => {
