@@ -274,9 +274,11 @@ export default function History() {
 
   const renderChange = (label: string, value: number, suffix = "") => {
     const color = value > 0 ? "#126B5D" : value < 0 ? "#9B1C1C" : "#555";
+    const backgroundColor =
+      value > 0 ? "#E4F7EF" : value < 0 ? "#FDE8E8" : "#F4F4F4";
 
     return (
-      <View style={styles.changeItem} key={label}>
+      <View style={[styles.changeItem, { backgroundColor }]} key={label}>
         <Text style={styles.metricLabel}>{label}</Text>
         <Text style={[styles.changeValue, { color }]}>
           {value >= 0 ? "+" : ""}
@@ -536,15 +538,15 @@ export default function History() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-  title: { fontSize: 24, fontWeight: "bold", marginBottom: 20 },
+  container: { backgroundColor: "#0E2A25", flex: 1, padding: 16, paddingTop: 28 },
+  title: { color: "#F4FBFA", fontSize: 24, fontWeight: "bold", marginBottom: 20 },
   titleContainer: {
     flexDirection: "row",
     marginBottom: 10,
-    backgroundColor: "#36BBA7",
+    backgroundColor: "#126B5D",
     width: "100%",
     borderRadius: 10,
-    borderColor: "white",
+    borderColor: "#36BBA7",
     borderWidth: 1,
     alignSelf: "center",
     justifyContent: "center"
@@ -553,8 +555,8 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     padding: 16,
     borderRadius: 20,
-    borderColor: "black",
-    borderWidth: 2,
+    borderColor: "#36BBA7",
+    borderWidth: 1,
     borderStyle: "dashed",
     marginBottom: 15
   },
@@ -566,8 +568,8 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     padding: 16,
     borderRadius: 20,
-    borderColor: "black",
-    borderWidth: 2,
+    borderColor: "#36BBA7",
+    borderWidth: 1,
     borderStyle: "dashed",
     flexDirection: "row",
     alignItems: "center",
@@ -582,6 +584,7 @@ const styles = StyleSheet.create({
     marginTop: 4
   },
   sectionTitle: {
+    color: "#123B36",
     fontSize: 18,
     fontWeight: "bold",
     marginBottom: 10
@@ -627,12 +630,12 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     padding: 12,
     borderRadius: 20,
-    borderColor: "black",
-    borderWidth: 2,
+    borderColor: "#36BBA7",
+    borderWidth: 1,
     borderStyle: "dashed",
     marginBottom: 10
   },
-  projectTitle: { fontSize: 20, fontWeight: "bold", marginBottom: 8 },
+  projectTitle: { color: "#123B36", fontSize: 20, fontWeight: "bold", marginBottom: 8 },
   projectSummary: {
     alignItems: "center",
     backgroundColor: "#F4FBFA",
@@ -655,7 +658,7 @@ const styles = StyleSheet.create({
     marginBottom: 12
   },
   changeItem: {
-    backgroundColor: "#F7F7F7",
+    backgroundColor: "#FFFFFF",
     borderRadius: 10,
     padding: 10,
     width: "48%"

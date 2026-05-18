@@ -14,7 +14,16 @@ export default function TabLayout() {
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
         headerShown: false,
-        tabBarButton: HapticTab
+        tabBarButton: HapticTab,
+        tabBarStyle: {
+          backgroundColor: "#126B5D",
+          borderTopColor: "#BFE7DE",
+          borderTopWidth: 1
+        },
+        tabBarInactiveTintColor: "#D9F4EF",
+        tabBarLabelStyle: {
+          fontWeight: "700"
+        }
       }}
     >
       <Tabs.Screen
@@ -23,7 +32,7 @@ export default function TabLayout() {
           title: "Home",
           tabBarIcon: ({ color }) => (
             // <IconSymbol size={28} name="house.fill" color={color} />
-            <MaterialCommunityIcons name="home" size={24} color="white" />
+            <MaterialCommunityIcons name="home" size={24} color={color} />
           )
         }}
       />
@@ -34,7 +43,7 @@ export default function TabLayout() {
           title: "Explore",
           tabBarIcon: ({ color }) => (
             // <IconSymbol size={28} name="paperplane.fill" color={color} />
-            <MaterialCommunityIcons name="compass" size={24} color="white" />
+            <MaterialCommunityIcons name="compass" size={24} color={color} />
           )
         }}
       />
@@ -47,7 +56,7 @@ export default function TabLayout() {
             <MaterialCommunityIcons
               name="view-dashboard"
               size={24}
-              color="white"
+              color={color}
             />
           )
         }}
@@ -58,7 +67,7 @@ export default function TabLayout() {
         options={{
           title: "Metrics",
           tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="chart-bar" size={24} color="white" />
+            <MaterialCommunityIcons name="chart-bar" size={24} color={color} />
           )
         }}
       />
@@ -68,7 +77,7 @@ export default function TabLayout() {
         options={{
           title: "Comparison",
           tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="compare" size={24} color="white" />
+            <MaterialCommunityIcons name="compare" size={24} color={color} />
           )
         }}
       />
@@ -81,7 +90,7 @@ export default function TabLayout() {
             <MaterialCommunityIcons
               name="speedometer"
               size={24}
-              color="white"
+              color={color}
             />
           )
         }}
@@ -92,7 +101,7 @@ export default function TabLayout() {
         options={{
           title: "History",
           tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="history" size={24} color="white" />
+            <MaterialCommunityIcons name="history" size={24} color={color} />
           )
         }}
       />

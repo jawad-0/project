@@ -325,9 +325,23 @@ export default function Comparison() {
     const status = metric.delta > 0 ? "Improved" : metric.delta < 0 ? "Worse" : "No Change";
     const color =
       metric.delta > 0 ? "#126B5D" : metric.delta < 0 ? "#9B1C1C" : "#555";
+    const backgroundColor =
+      metric.delta > 0 ? "#E4F7EF" : metric.delta < 0 ? "#FDE8E8" : "#F4F4F4";
 
     return (
-      <View style={styles.metricRow} key={metric.label}>
+      <View
+        style={[
+          styles.metricRow,
+          {
+            backgroundColor,
+            borderBottomWidth: 0,
+            borderRadius: 10,
+            marginBottom: 8,
+            paddingHorizontal: 10
+          }
+        ]}
+        key={metric.label}
+      >
         <View style={styles.metricText}>
           <Text style={styles.label}>{metric.label}</Text>
           <Text style={styles.insightDetail}>
@@ -493,15 +507,15 @@ export default function Comparison() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-  title: { fontSize: 24, fontWeight: "bold", marginBottom: 20 },
+  container: { backgroundColor: "#0E2A25", flex: 1, padding: 16, paddingTop: 28 },
+  title: { color: "#F4FBFA", fontSize: 24, fontWeight: "bold", marginBottom: 20 },
   titleContainer: {
     flexDirection: "row",
     marginBottom: 10,
-    backgroundColor: "#36BBA7",
+    backgroundColor: "#126B5D",
     width: "100%",
     borderRadius: 10,
-    borderColor: "white",
+    borderColor: "#36BBA7",
     borderWidth: 1,
     alignSelf: "center",
     justifyContent: "center"
@@ -510,8 +524,8 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     padding: 16,
     borderRadius: 20,
-    borderColor: "black",
-    borderWidth: 2,
+    borderColor: "#36BBA7",
+    borderWidth: 1,
     borderStyle: "dashed",
     marginBottom: 15
   },
@@ -523,8 +537,8 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     padding: 16,
     borderRadius: 20,
-    borderColor: "black",
-    borderWidth: 2,
+    borderColor: "#36BBA7",
+    borderWidth: 1,
     borderStyle: "dashed",
     flexDirection: "row",
     alignItems: "center",
@@ -570,14 +584,15 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     padding: 12,
     borderRadius: 20,
-    borderColor: "black",
-    borderWidth: 2,
+    borderColor: "#36BBA7",
+    borderWidth: 1,
     borderStyle: "dashed",
     marginBottom: 10
   },
-  projectTitle: { fontSize: 20, fontWeight: "bold", marginBottom: 5 },
+  projectTitle: { color: "#123B36", fontSize: 20, fontWeight: "bold", marginBottom: 5 },
   projectDetails: { fontSize: 16, fontWeight: "bold" },
   sectionTitle: {
+    color: "#123B36",
     fontSize: 18,
     fontWeight: "bold",
     marginBottom: 10

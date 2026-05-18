@@ -256,7 +256,19 @@ export default function Metrics() {
   );
 
   const renderChangeRow = (change: MetricChange) => (
-    <View style={styles.metricRow} key={change.label}>
+    <View
+      style={[
+        styles.metricRow,
+        {
+          backgroundColor: change.improved ? "#E4F7EF" : "#FDE8E8",
+          borderBottomWidth: 0,
+          borderRadius: 10,
+          marginBottom: 8,
+          paddingHorizontal: 10
+        }
+      ]}
+      key={change.label}
+    >
       <View style={styles.metricText}>
         <Text style={styles.label}>{change.label}</Text>
         <Text style={styles.insightDetail}>
@@ -393,15 +405,15 @@ export default function Metrics() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-  title: { fontSize: 24, fontWeight: "bold", marginBottom: 20 },
+  container: { backgroundColor: "#0E2A25", flex: 1, padding: 16, paddingTop: 28 },
+  title: { color: "#F4FBFA", fontSize: 24, fontWeight: "bold", marginBottom: 20 },
   titleContainer: {
     flexDirection: "row",
     marginBottom: 10,
-    backgroundColor: "#36BBA7",
+    backgroundColor: "#126B5D",
     width: "100%",
     borderRadius: 10,
-    borderColor: "white",
+    borderColor: "#36BBA7",
     borderWidth: 1,
     alignSelf: "center",
     justifyContent: "center"
@@ -410,8 +422,8 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     padding: 16,
     borderRadius: 20,
-    borderColor: "black",
-    borderWidth: 2,
+    borderColor: "#36BBA7",
+    borderWidth: 1,
     borderStyle: "dashed",
     marginBottom: 15
   },
@@ -423,8 +435,8 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     padding: 16,
     borderRadius: 20,
-    borderColor: "black",
-    borderWidth: 2,
+    borderColor: "#36BBA7",
+    borderWidth: 1,
     borderStyle: "dashed",
     flexDirection: "row",
     alignItems: "center",
@@ -439,6 +451,7 @@ const styles = StyleSheet.create({
     marginTop: 4
   },
   sectionTitle: {
+    color: "#123B36",
     fontSize: 18,
     fontWeight: "bold",
     marginBottom: 10,
@@ -463,17 +476,17 @@ const styles = StyleSheet.create({
     textAlign: "right"
   },
   label: { fontSize: 16, color: "#555" },
-  value: { fontSize: 20, fontWeight: "bold", marginTop: 5 },
+  value: { color: "#126B5D", fontSize: 20, fontWeight: "bold", marginTop: 5 },
   projectCard: {
     backgroundColor: "white",
     padding: 12,
     borderRadius: 20,
-    borderColor: "black",
-    borderWidth: 2,
+    borderColor: "#36BBA7",
+    borderWidth: 1,
     borderStyle: "dashed",
     marginBottom: 10
   },
-  projectTitle: { fontSize: 20, fontWeight: "bold", marginBottom: 5 },
+  projectTitle: { color: "#123B36", fontSize: 20, fontWeight: "bold", marginBottom: 5 },
   projectDetails: { fontSize: 16, fontWeight: "bold" },
   sprintBlock: {
     backgroundColor: "#F4FBFA",

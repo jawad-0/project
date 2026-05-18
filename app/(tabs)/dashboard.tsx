@@ -265,6 +265,11 @@ export default function Dashboard() {
     </View>
   );
 
+  const getChangeBadgeStyle = (value: number) => ({
+    backgroundColor: value > 0 ? "#E4F7EF" : value < 0 ? "#FDE8E8" : "#F4F4F4",
+    color: value > 0 ? "#126B5D" : value < 0 ? "#9B1C1C" : "#555"
+  });
+
   return (
     <ScrollView style={styles.container}>
       <Text style={styles.title}>Refactoring Dashboard</Text>
@@ -458,16 +463,40 @@ export default function Dashboard() {
               - Code Smells After: {project.code_smells_after}
             </Text>
             <Text></Text>
-            <Text style={styles.projectDetails}>
+            <Text
+              style={[
+                styles.projectDetails,
+                styles.changeBadge,
+                getChangeBadgeStyle(project.performanceGain)
+              ]}
+            >
               - Performance Gain: {formatNumber(project.performanceGain)}%
             </Text>
-            <Text style={styles.projectDetails}>
+            <Text
+              style={[
+                styles.projectDetails,
+                styles.changeBadge,
+                getChangeBadgeStyle(project.complexityGain)
+              ]}
+            >
               - Complexity Gain: {formatNumber(project.complexityGain)}%
             </Text>
-            <Text style={styles.projectDetails}>
+            <Text
+              style={[
+                styles.projectDetails,
+                styles.changeBadge,
+                getChangeBadgeStyle(project.maintainabilityGain)
+              ]}
+            >
               - Maintainability Gain: {formatNumber(project.maintainabilityGain)}%
             </Text>
-            <Text style={styles.projectDetails}>
+            <Text
+              style={[
+                styles.projectDetails,
+                styles.changeBadge,
+                getChangeBadgeStyle(project.smellReduction)
+              ]}
+            >
               - Code Smells Removed: {project.smellReduction}
             </Text>
           </View>
@@ -478,15 +507,15 @@ export default function Dashboard() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-  title: { fontSize: 24, fontWeight: "bold", marginBottom: 20 },
+  container: { backgroundColor: "#0E2A25", flex: 1, padding: 16, paddingTop: 28 },
+  title: { color: "#F4FBFA", fontSize: 24, fontWeight: "bold", marginBottom: 20 },
   titleContainer: {
     flexDirection: "row",
     marginBottom: 10,
-    backgroundColor: "#36BBA7",
+    backgroundColor: "#126B5D",
     width: "100%",
     borderRadius: 10,
-    borderColor: "white",
+    borderColor: "#36BBA7",
     borderWidth: 1,
     alignSelf: "center",
     justifyContent: "center"
@@ -495,8 +524,8 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     padding: 16,
     borderRadius: 20,
-    borderColor: "black",
-    borderWidth: 2,
+    borderColor: "#36BBA7",
+    borderWidth: 1,
     borderStyle: "dashed",
     marginBottom: 15
   },
@@ -508,8 +537,8 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     padding: 16,
     borderRadius: 20,
-    borderColor: "black",
-    borderWidth: 2,
+    borderColor: "#36BBA7",
+    borderWidth: 1,
     borderStyle: "dashed",
     flexDirection: "row",
     alignItems: "center",
@@ -527,6 +556,7 @@ const styles = StyleSheet.create({
     marginTop: 5
   },
   sectionTitle: {
+    color: "#123B36",
     fontSize: 18,
     fontWeight: "bold",
     marginBottom: 10
@@ -555,16 +585,22 @@ const styles = StyleSheet.create({
     fontWeight: "bold"
   },
   label: { fontSize: 16, color: "#555" },
-  value: { fontSize: 20, fontWeight: "bold", marginTop: 5 },
+  value: { color: "#126B5D", fontSize: 20, fontWeight: "bold", marginTop: 5 },
   projectCard: {
     backgroundColor: "white",
     padding: 12,
     borderRadius: 20,
-    borderColor: "black",
-    borderWidth: 2,
+    borderColor: "#36BBA7",
+    borderWidth: 1,
     borderStyle: "dashed",
     marginBottom: 10
   },
-  projectTitle: { fontSize: 20, fontWeight: "bold", marginBottom: 5 },
-  projectDetails: { fontSize: 16, fontWeight: "bold" }
+  projectTitle: { color: "#123B36", fontSize: 20, fontWeight: "bold", marginBottom: 5 },
+  projectDetails: { fontSize: 16, fontWeight: "bold" },
+  changeBadge: {
+    borderRadius: 8,
+    marginBottom: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6
+  }
 });

@@ -1,8 +1,6 @@
-import { Image } from "expo-image";
-import { Platform, StyleSheet } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { StyleSheet, Text, View } from "react-native";
 
-import { Collapsible } from "@/components/ui/collapsible";
-import { ExternalLink } from "@/components/external-link";
 import ParallaxScrollView from "@/components/parallax-scroll-view";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
@@ -12,156 +10,150 @@ import { Fonts } from "@/constants/theme";
 export default function TabTwoScreen() {
   return (
     <ParallaxScrollView
-      headerBackgroundColor={{ light: "#D0D0D0", dark: "#353636" }}
+      headerBackgroundColor={{ light: "#123B36", dark: "#071B18" }}
       headerImage={
         <IconSymbol
           size={310}
-          color="#808080"
+          color="#36BBA7"
           name="chevron.left.forwardslash.chevron.right"
           style={styles.headerImage}
         />
       }
     >
-      {/* <ThemedView style={styles.titleContainer}>
-        <ThemedText
-          type="title"
-          style={{
-            fontFamily: Fonts.rounded,
-          }}>
-          Explore
-        </ThemedText>
-      </ThemedView> */}
-
-      {/* <ThemedText>
-        This app includes example code to help you get started.
-      </ThemedText> */}
-
       <ThemedView style={styles.titleContainer}>
-        <ThemedText
-          type="title"
-          style={{
-            fontFamily: Fonts.rounded
-          }}
-        >
+        <ThemedText type="title" style={styles.screenTitle}>
           Introduction
         </ThemedText>
       </ThemedView>
 
-      <ThemedText>
-        As part of this research project, a mobile application has been
-        developed using React Native to visualize and interact with software
-        quality metrics collected from Django and Flask-based systems. The
-        purpose of this application is to provide a user-friendly interface for
-        analyzing the impact of refactoring on code quality and system
-        performance.
-      </ThemedText>
+      <View style={styles.infoCard}>
+        <MaterialCommunityIcons name="information-outline" size={28} color="#126B5D" />
+        <ThemedText style={styles.infoText}>
+          This React Native app visualizes software quality metrics collected
+          from Django and Flask systems, helping evaluate how refactoring affects
+          code quality and backend performance over time.
+        </ThemedText>
+      </View>
+
+      <View style={styles.workflowGrid}>
+        <View style={styles.workflowCard}>
+          <MaterialCommunityIcons name="database-search" size={24} color="#126B5D" />
+          <Text style={styles.workflowTitle}>Collect</Text>
+          <Text style={styles.workflowText}>Store sprint metrics and stages.</Text>
+        </View>
+        <View style={styles.workflowCard}>
+          <MaterialCommunityIcons name="compare-horizontal" size={24} color="#126B5D" />
+          <Text style={styles.workflowTitle}>Compare</Text>
+          <Text style={styles.workflowText}>Review previous sprint vs now.</Text>
+        </View>
+        <View style={styles.workflowCard}>
+          <MaterialCommunityIcons name="chart-box-outline" size={24} color="#126B5D" />
+          <Text style={styles.workflowTitle}>Analyze</Text>
+          <Text style={styles.workflowText}>Summarize gains and regressions.</Text>
+        </View>
+      </View>
 
       <ThemedView style={styles.titleContainer}>
-        <ThemedText
-          type="title"
-          style={{
-            fontFamily: Fonts.rounded
-          }}
-        >
+        <ThemedText type="title" style={styles.screenTitle}>
           Objectives
         </ThemedText>
       </ThemedView>
 
-      <ThemedText>
-        The mobile application is designed with the following objectives: {"\n\n"}
-•	To display software quality metrics such as Cyclomatic Complexity and Maintainability Index {"\n"}
-•	To compare code quality before and after refactoring {"\n"}
-•	To visualize performance improvements in backend systems {"\n"}
-•	To provide an interactive dashboard for research analysis
-
-      </ThemedText>
-
-      {/* <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{" "}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText>{" "}
-          and{" "}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in{" "}
-          <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{" "}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the
-          web version, press <ThemedText type="defaultSemiBold">w</ThemedText>{" "}
-          in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the{" "}
-          <ThemedText type="defaultSemiBold">@2x</ThemedText> and{" "}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to
-          provide files for different screen densities
-        </ThemedText>
-        <Image
-          source={require("@/assets/images/react-logo.png")}
-          style={{ width: 100, height: 100, alignSelf: "center" }}
-        />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{" "}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook
-          lets you inspect what the user&apos;s current color scheme is, and so
-          you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{" "}
-          <ThemedText type="defaultSemiBold">
-            components/HelloWave.tsx
-          </ThemedText>{" "}
-          component uses the powerful{" "}
-          <ThemedText type="defaultSemiBold" style={{ fontFamily: Fonts.mono }}>
-            react-native-reanimated
-          </ThemedText>{" "}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The{" "}
-              <ThemedText type="defaultSemiBold">
-                components/ParallaxScrollView.tsx
-              </ThemedText>{" "}
-              component provides a parallax effect for the header image.
-            </ThemedText>
-          )
-        })}
-      </Collapsible> */}
+      <View style={styles.objectiveCard}>
+        {[
+          "Display cyclomatic complexity and maintainability trends",
+          "Compare code quality before and after refactoring",
+          "Visualize backend response-time improvements",
+          "Provide an interactive dashboard for research analysis"
+        ].map((objective) => (
+          <View style={styles.objectiveRow} key={objective}>
+            <MaterialCommunityIcons name="check-circle" size={18} color="#126B5D" />
+            <Text style={styles.objectiveText}>{objective}</Text>
+          </View>
+        ))}
+      </View>
     </ParallaxScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   headerImage: {
-    color: "#808080",
+    color: "#36BBA7",
     bottom: -90,
     left: -35,
     position: "absolute"
   },
   titleContainer: {
+    backgroundColor: "#126B5D",
+    borderColor: "#36BBA7",
+    borderRadius: 14,
+    borderWidth: 1,
     flexDirection: "row",
-    gap: 8
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10
+  },
+  screenTitle: {
+    color: "white",
+    fontFamily: Fonts.rounded
+  },
+  infoCard: {
+    alignItems: "flex-start",
+    backgroundColor: "white",
+    borderColor: "#36BBA7",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    flexDirection: "row",
+    gap: 12,
+    padding: 16
+  },
+  infoText: {
+    color: "#35524C",
+    flex: 1
+  },
+  workflowGrid: {
+    flexDirection: "row",
+    gap: 10
+  },
+  workflowCard: {
+    backgroundColor: "white",
+    borderColor: "#36BBA7",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    flex: 1,
+    padding: 12
+  },
+  workflowTitle: {
+    color: "#123B36",
+    fontSize: 16,
+    fontWeight: "bold",
+    marginTop: 8
+  },
+  workflowText: {
+    color: "#55736D",
+    fontSize: 12,
+    marginTop: 4
+  },
+  objectiveCard: {
+    backgroundColor: "white",
+    borderColor: "#36BBA7",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    gap: 10,
+    padding: 16
+  },
+  objectiveRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10
+  },
+  objectiveText: {
+    color: "#35524C",
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "600"
   }
 });

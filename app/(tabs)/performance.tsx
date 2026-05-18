@@ -364,6 +364,11 @@ export default function Performance() {
           const improved = project.improvementMs > 0;
           const regressed = project.improvementMs < 0;
           const color = improved ? "#126B5D" : regressed ? "#9B1C1C" : "#555";
+          const backgroundColor = improved
+            ? "#E4F7EF"
+            : regressed
+              ? "#FDE8E8"
+              : "#F4F4F4";
           const status = improved
             ? "Improved"
             : regressed
@@ -384,7 +389,7 @@ export default function Performance() {
                 {project.projectName}
               </Text>
 
-              <View style={styles.statusRow}>
+              <View style={[styles.statusRow, { backgroundColor }]}>
                 <View>
                   <Text style={styles.label}>Performance Status</Text>
                   <Text style={[styles.statusText, { color }]}>{status}</Text>
@@ -475,15 +480,15 @@ export default function Performance() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-  title: { fontSize: 24, fontWeight: "bold", marginBottom: 20 },
+  container: { backgroundColor: "#0E2A25", flex: 1, padding: 16, paddingTop: 28 },
+  title: { color: "#F4FBFA", fontSize: 24, fontWeight: "bold", marginBottom: 20 },
   titleContainer: {
     flexDirection: "row",
     marginBottom: 10,
-    backgroundColor: "#36BBA7",
+    backgroundColor: "#126B5D",
     width: "100%",
     borderRadius: 10,
-    borderColor: "white",
+    borderColor: "#36BBA7",
     borderWidth: 1,
     alignSelf: "center",
     justifyContent: "center"
@@ -492,8 +497,8 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     padding: 16,
     borderRadius: 20,
-    borderColor: "black",
-    borderWidth: 2,
+    borderColor: "#36BBA7",
+    borderWidth: 1,
     borderStyle: "dashed",
     marginBottom: 15
   },
@@ -505,8 +510,8 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     padding: 16,
     borderRadius: 20,
-    borderColor: "black",
-    borderWidth: 2,
+    borderColor: "#36BBA7",
+    borderWidth: 1,
     borderStyle: "dashed",
     flexDirection: "row",
     alignItems: "center",
@@ -526,14 +531,15 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     padding: 12,
     borderRadius: 20,
-    borderColor: "black",
-    borderWidth: 2,
+    borderColor: "#36BBA7",
+    borderWidth: 1,
     borderStyle: "dashed",
     marginBottom: 10
   },
-  projectTitle: { fontSize: 20, fontWeight: "bold", marginBottom: 5 },
+  projectTitle: { color: "#123B36", fontSize: 20, fontWeight: "bold", marginBottom: 5 },
   projectDetails: { fontSize: 16, fontWeight: "bold" },
   sectionTitle: {
+    color: "#123B36",
     fontSize: 18,
     fontWeight: "bold",
     marginBottom: 10
@@ -541,11 +547,12 @@ const styles = StyleSheet.create({
   statusRow: {
     alignItems: "center",
     borderBottomColor: "#e0e0e0",
-    borderBottomWidth: 1,
+    borderBottomWidth: 0,
+    borderRadius: 10,
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 10,
-    paddingBottom: 10
+    padding: 10
   },
   statusText: {
     fontSize: 18,
