@@ -1,9 +1,10 @@
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   type DimensionValue,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -49,6 +50,15 @@ type ProjectPerformance = {
   totalSprints: number;
 };
 
+type SprintPerformanceBar = {
+  key: string;
+  sprintNumber: number;
+  totalSprints: number;
+  responseTime: number;
+  deltaMs: number;
+  deltaPercent: number;
+};
+
 const toNumber = (value: number | string | null | undefined) => {
   const parsed = Number(value ?? 0);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -78,6 +88,37 @@ const getImprovementPercent = (previousTime: number, nowTime: number) => {
   return ((previousTime - nowTime) / previousTime) * 100;
 };
 
+const buildSprintBars = (project: ProjectPerformance): SprintPerformanceBar[] => {
+  const sprintRecords = project.records.filter(
+    (record) => record.response_time_ms != null && toNumber(record.completed_sprints) > 0
+  );
+  const recordsToRender =
+    sprintRecords.length > 0
+      ? sprintRecords
+      : project.records.filter((record) => record.response_time_ms != null);
+
+  return recordsToRender.map((record) => {
+    const recordIndex = project.records.indexOf(record);
+    const previousRecord = project.records
+      .slice(0, recordIndex)
+      .reverse()
+      .find((item) => item.response_time_ms != null);
+    const responseTime = toNumber(record.response_time_ms);
+    const previousTime = previousRecord
+      ? toNumber(previousRecord.response_time_ms)
+      : responseTime;
+
+    return {
+      key: `${record.id}-${record.completed_sprints}-${record.measured_at}`,
+      sprintNumber: toNumber(record.completed_sprints),
+      totalSprints: toNumber(record.total_sprints) || project.totalSprints,
+      responseTime,
+      deltaMs: previousTime - responseTime,
+      deltaPercent: getImprovementPercent(previousTime, responseTime)
+    };
+  });
+};
+
 const buildFallbackRecord = (
   project: PerformanceProject,
   stage: "baseline" | "after_refactoring"
@@ -99,6 +140,9 @@ export default function Performance() {
   );
   const [historyRecords, setHistoryRecords] = useState<HistoryRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [openProjects, setOpenProjects] = useState<string[]>([]);
+  const scrollRef = useRef<ScrollView>(null);
+  const projectPositions = useRef<Record<string, number>>({});
 
   useEffect(() => {
     const fetchProjects = fetch(`${PERFORMANCE_API_URL}/`)
@@ -255,38 +299,192 @@ export default function Performance() {
   );
 
   const renderPerformanceBar = (project: ProjectPerformance) => {
-    const maxTime = Math.max(project.previousTime, project.nowTime, 1);
-    const previousWidth: DimensionValue = `${Math.max(
-      (project.previousTime / maxTime) * 100,
-      4
-    )}%`;
-    const nowWidth: DimensionValue = `${Math.max(
-      (project.nowTime / maxTime) * 100,
-      4
-    )}%`;
-    const improved = project.improvementMs > 0;
-    const regressed = project.improvementMs < 0;
-    const color = improved ? "#126B5D" : regressed ? "#9B1C1C" : "#555";
+    const sprintBars = buildSprintBars(project);
+    const maxDelta = Math.max(
+      ...sprintBars.map((sprint) => Math.abs(sprint.deltaMs)),
+      1
+    );
 
     return (
       <View style={styles.barSection}>
-        <View style={styles.barRow}>
-          <Text style={styles.barLabel}>Previous</Text>
-          <View style={styles.barTrack}>
-            <View style={[styles.previousBar, { width: previousWidth }]} />
-          </View>
-          <Text style={styles.barValue}>{formatNumber(project.previousTime)} ms</Text>
-        </View>
+        {sprintBars.map((sprint) => {
+          const improved = sprint.deltaMs > 0;
+          const regressed = sprint.deltaMs < 0;
+          const color = improved ? "#126B5D" : regressed ? "#9B1C1C" : "#555";
+          const barWidth: DimensionValue = `${Math.max(
+            (Math.abs(sprint.deltaMs) / maxDelta) * 100,
+            4
+          )}%`;
+          const sprintLabel =
+            sprint.sprintNumber > 0
+              ? `Sprint ${sprint.sprintNumber}`
+              : "Baseline";
 
-        <View style={styles.barRow}>
-          <Text style={styles.barLabel}>Now</Text>
-          <View style={styles.barTrack}>
-            <View style={[styles.nowBar, { width: nowWidth, backgroundColor: color }]} />
+          return (
+            <View style={styles.sprintBarBlock} key={sprint.key}>
+              <View style={styles.sprintBarHeader}>
+                <Text style={styles.barLabel}>{sprintLabel}</Text>
+                <Text style={styles.sprintResponseValue}>
+                  {formatNumber(sprint.responseTime)} ms
+                </Text>
+              </View>
+              <View style={styles.barRow}>
+                <View style={styles.barTrack}>
+                  <View style={[styles.nowBar, { width: barWidth, backgroundColor: color }]} />
+                </View>
+                <Text style={[styles.barValue, { color }]}>
+                  {sprint.deltaMs >= 0 ? "+" : ""}
+                  {formatNumber(sprint.deltaMs)} ms
+                </Text>
+              </View>
+              <Text style={[styles.deltaPercent, { color }]}>
+                {sprint.deltaPercent >= 0 ? "+" : ""}
+                {formatNumber(sprint.deltaPercent)}% vs previous sprint
+                {sprint.totalSprints ? ` (${sprint.sprintNumber}/${sprint.totalSprints})` : ""}
+              </Text>
+            </View>
+          );
+        })}
+
+        {sprintBars.length === 0 && (
+          <View style={styles.sprintBarBlock}>
+            <Text style={styles.projectDetails}>No sprint response records found</Text>
           </View>
-          <Text style={[styles.barValue, { color }]}>
-            {formatNumber(project.nowTime)} ms
-          </Text>
-        </View>
+        )}
+      </View>
+    );
+  };
+
+  const toggleProject = (projectName: string) => {
+    const isOpen = openProjects.includes(projectName);
+
+    setOpenProjects((currentProjects) =>
+      isOpen
+        ? currentProjects.filter((name) => name !== projectName)
+        : [...currentProjects, projectName]
+    );
+
+    if (!isOpen) {
+      setTimeout(() => {
+        scrollRef.current?.scrollTo({
+          y: Math.max((projectPositions.current[projectName] ?? 0) - 12, 0),
+          animated: true
+        });
+      }, 100);
+    }
+  };
+
+  const renderProjectItem = (project: ProjectPerformance) => {
+    const isOpen = openProjects.includes(project.projectName);
+    const improved = project.improvementMs > 0;
+    const regressed = project.improvementMs < 0;
+    const color = improved ? "#126B5D" : regressed ? "#9B1C1C" : "#555";
+    const backgroundColor = improved
+      ? "#E4F7EF"
+      : regressed
+        ? "#FDE8E8"
+        : "#F4F4F4";
+    const status = improved
+      ? "Improved"
+      : regressed
+        ? "Decreased Performance"
+        : "No Change";
+
+    return (
+      <View
+        style={styles.projectCard}
+        key={project.projectName}
+        onLayout={(event) => {
+          projectPositions.current[project.projectName] = event.nativeEvent.layout.y;
+        }}
+      >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ expanded: isOpen }}
+          onPress={() => toggleProject(project.projectName)}
+          style={styles.projectListRow}
+        >
+          <View style={styles.projectListMain}>
+            <Text style={styles.projectTitle}>
+              <MaterialCommunityIcons
+                name={project.projectType === "Django" ? "language-python" : "flask"}
+                size={24}
+                color={project.projectType === "Django" ? "#000000" : "#F05A28"}
+                style={{ marginRight: 8 }}
+              />{" "}
+              {project.projectName}
+            </Text>
+            <Text style={styles.insightDetail}>
+              {project.records.length} records, sprint {project.completedSprints}/
+              {project.totalSprints || project.completedSprints}
+            </Text>
+          </View>
+
+          <View style={styles.projectListMeta}>
+            <Text style={[styles.deltaValue, { color }]}>
+              {project.improvementMs >= 0 ? "+" : ""}
+              {formatNumber(project.improvementMs)} ms
+            </Text>
+            <MaterialCommunityIcons
+              name={isOpen ? "chevron-up" : "chevron-down"}
+              size={24}
+              color="#123B36"
+            />
+          </View>
+        </Pressable>
+
+        {isOpen && (
+          <View style={styles.projectDetailPanel}>
+            <View style={[styles.statusRow, { backgroundColor }]}>
+              <View>
+                <Text style={styles.label}>Performance Status</Text>
+                <Text style={[styles.statusText, { color }]}>{status}</Text>
+              </View>
+              <View style={styles.deltaBox}>
+                <Text style={[styles.deltaValue, { color }]}>
+                  {project.improvementMs >= 0 ? "+" : ""}
+                  {formatNumber(project.improvementMs)} ms
+                </Text>
+                <Text style={[styles.deltaPercent, { color }]}>
+                  {project.improvementPercent >= 0 ? "+" : ""}
+                  {formatNumber(project.improvementPercent)}%
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.stageBox}>
+              <View style={styles.stageColumn}>
+                <Text style={styles.stageLabel}>Previous Sprint</Text>
+                <Text style={styles.projectDetails}>
+                  Sprint {toNumber(project.previous.completed_sprints)}/
+                  {toNumber(project.previous.total_sprints) || project.totalSprints}
+                </Text>
+                <Text style={styles.insightDetail}>
+                  {formatStage(project.previous.measurement_stage)}
+                </Text>
+              </View>
+
+              <MaterialCommunityIcons name="arrow-right" size={22} color="#36BBA7" />
+
+              <View style={styles.stageColumn}>
+                <Text style={styles.stageLabel}>Now</Text>
+                <Text style={styles.projectDetails}>
+                  Sprint {toNumber(project.now.completed_sprints)}/
+                  {toNumber(project.now.total_sprints) || project.totalSprints}
+                </Text>
+                <Text style={styles.insightDetail}>
+                  {formatStage(project.now.measurement_stage)}
+                </Text>
+              </View>
+            </View>
+
+            {renderPerformanceBar(project)}
+
+            <Text style={styles.projectDetails}>
+              History included: {project.records.length} performance records
+            </Text>
+          </View>
+        )}
       </View>
     );
   };
@@ -301,7 +499,11 @@ export default function Performance() {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      ref={scrollRef}
+      style={styles.container}
+      contentContainerStyle={styles.scrollContent}
+    >
       <Text style={styles.title}>API Performance</Text>
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title" style={{ fontSize: 25 }}>
@@ -360,86 +562,7 @@ export default function Performance() {
           </Text>
         </View>
       ) : (
-        projects.map((project) => {
-          const improved = project.improvementMs > 0;
-          const regressed = project.improvementMs < 0;
-          const color = improved ? "#126B5D" : regressed ? "#9B1C1C" : "#555";
-          const backgroundColor = improved
-            ? "#E4F7EF"
-            : regressed
-              ? "#FDE8E8"
-              : "#F4F4F4";
-          const status = improved
-            ? "Improved"
-            : regressed
-              ? "Decreased Performance"
-              : "No Change";
-
-          return (
-            <View style={styles.projectCard} key={project.projectName}>
-              <Text style={styles.projectTitle}>
-                <MaterialCommunityIcons
-                  name={
-                    project.projectType === "Django" ? "language-python" : "flask"
-                  }
-                  size={24}
-                  color={project.projectType === "Django" ? "#000000" : "#F05A28"}
-                  style={{ marginRight: 8 }}
-                />{" "}
-                {project.projectName}
-              </Text>
-
-              <View style={[styles.statusRow, { backgroundColor }]}>
-                <View>
-                  <Text style={styles.label}>Performance Status</Text>
-                  <Text style={[styles.statusText, { color }]}>{status}</Text>
-                </View>
-                <View style={styles.deltaBox}>
-                  <Text style={[styles.deltaValue, { color }]}>
-                    {project.improvementMs >= 0 ? "+" : ""}
-                    {formatNumber(project.improvementMs)} ms
-                  </Text>
-                  <Text style={[styles.deltaPercent, { color }]}>
-                    {project.improvementPercent >= 0 ? "+" : ""}
-                    {formatNumber(project.improvementPercent)}%
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.stageBox}>
-                <View style={styles.stageColumn}>
-                  <Text style={styles.stageLabel}>Previous Sprint</Text>
-                  <Text style={styles.projectDetails}>
-                    Sprint {toNumber(project.previous.completed_sprints)}/
-                    {toNumber(project.previous.total_sprints) || project.totalSprints}
-                  </Text>
-                  <Text style={styles.insightDetail}>
-                    {formatStage(project.previous.measurement_stage)}
-                  </Text>
-                </View>
-
-                <MaterialCommunityIcons name="arrow-right" size={22} color="#36BBA7" />
-
-                <View style={styles.stageColumn}>
-                  <Text style={styles.stageLabel}>Now</Text>
-                  <Text style={styles.projectDetails}>
-                    Sprint {toNumber(project.now.completed_sprints)}/
-                    {toNumber(project.now.total_sprints) || project.totalSprints}
-                  </Text>
-                  <Text style={styles.insightDetail}>
-                    {formatStage(project.now.measurement_stage)}
-                  </Text>
-                </View>
-              </View>
-
-              {renderPerformanceBar(project)}
-
-              <Text style={styles.projectDetails}>
-                History included: {project.records.length} performance records
-              </Text>
-            </View>
-          );
-        })
+        projects.map(renderProjectItem)
       )}
 
       {typeStats.length > 0 && (
@@ -481,6 +604,9 @@ export default function Performance() {
 
 const styles = StyleSheet.create({
   container: { backgroundColor: "#0E2A25", flex: 1, padding: 16, paddingTop: 28 },
+  scrollContent: {
+    paddingBottom: 96
+  },
   title: { color: "#F4FBFA", fontSize: 24, fontWeight: "bold", marginBottom: 20 },
   titleContainer: {
     flexDirection: "row",
@@ -529,12 +655,33 @@ const styles = StyleSheet.create({
   value: { fontSize: 20, fontWeight: "bold", marginTop: 5 },
   projectCard: {
     backgroundColor: "white",
-    padding: 12,
     borderRadius: 20,
     borderColor: "#36BBA7",
     borderWidth: 1,
     borderStyle: "dashed",
     marginBottom: 10
+  },
+  projectListRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10,
+    justifyContent: "space-between",
+    padding: 12
+  },
+  projectListMain: {
+    flex: 1,
+    paddingRight: 8
+  },
+  projectListMeta: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 4
+  },
+  projectDetailPanel: {
+    borderTopColor: "#e0e0e0",
+    borderTopWidth: 1,
+    padding: 12,
+    paddingTop: 8
   },
   projectTitle: { color: "#123B36", fontSize: 20, fontWeight: "bold", marginBottom: 5 },
   projectDetails: { fontSize: 16, fontWeight: "bold" },
@@ -595,6 +742,17 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 12
   },
+  sprintBarBlock: {
+    backgroundColor: "#F4FBFA",
+    borderRadius: 10,
+    padding: 10
+  },
+  sprintBarHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 6
+  },
   barRow: {
     alignItems: "center",
     flexDirection: "row",
@@ -618,6 +776,11 @@ const styles = StyleSheet.create({
   },
   nowBar: {
     height: "100%"
+  },
+  sprintResponseValue: {
+    color: "#123B36",
+    fontSize: 13,
+    fontWeight: "bold"
   },
   barValue: {
     color: "#555",

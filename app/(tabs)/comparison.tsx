@@ -1,8 +1,16 @@
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useEffect, useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  type DimensionValue,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View
+} from "react-native";
+import Svg, { Circle } from "react-native-svg";
 
 const API_IP = "172.20.10.6"; // replace with your backend IP
 const COMPARISON_API_URL = `http://${API_IP}:5000/api/comparison`;
@@ -55,6 +63,15 @@ type ProjectComparison = {
   completedSprints: number;
   totalSprints: number;
   improvementScore: number;
+};
+
+type ProjectAnalysis = ProjectComparison & {
+  analysisScore: number;
+  positiveChanges: number;
+  negativeChanges: number;
+  stableChanges: number;
+  strongestMetric: ComparisonMetric | null;
+  weakestMetric: ComparisonMetric | null;
 };
 
 const toNumber = (value: number | string | null | undefined) => {
@@ -131,6 +148,11 @@ const buildMetrics = (
   )
 ];
 
+const getMetricWeight = (metric: ComparisonMetric) => {
+  const baseline = Math.max(Math.abs(metric.previous), 1);
+  return (metric.delta / baseline) * 100;
+};
+
 const buildFallbackRecord = (
   project: DashboardComparison,
   stage: "baseline" | "after_refactoring"
@@ -161,6 +183,9 @@ export default function Comparison() {
   >([]);
   const [historyRecords, setHistoryRecords] = useState<HistoryRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [openProjects, setOpenProjects] = useState<string[]>([]);
+  const scrollRef = useRef<ScrollView>(null);
+  const projectPositions = useRef<Record<string, number>>({});
 
   useEffect(() => {
     const fetchProjects = fetch(`${COMPARISON_API_URL}/`)
@@ -239,10 +264,48 @@ export default function Comparison() {
   const comparisons =
     historyComparisons.length > 0 ? historyComparisons : fallbackComparisons;
 
+  const analysedComparisons = useMemo<ProjectAnalysis[]>(
+    () =>
+      comparisons
+        .map((project) => {
+          const sortedMetrics = [...project.metrics].sort(
+            (a, b) => getMetricWeight(b) - getMetricWeight(a)
+          );
+          const positiveChanges = project.metrics.filter(
+            (metric) => metric.delta > 0
+          ).length;
+          const negativeChanges = project.metrics.filter(
+            (metric) => metric.delta < 0
+          ).length;
+          const stableChanges = project.metrics.length - positiveChanges - negativeChanges;
+
+          return {
+            ...project,
+            analysisScore: project.metrics.reduce(
+              (total, metric) => total + getMetricWeight(metric),
+              0
+            ),
+            positiveChanges,
+            negativeChanges,
+            stableChanges,
+            strongestMetric: sortedMetrics[0] ?? null,
+            weakestMetric: sortedMetrics[sortedMetrics.length - 1] ?? null
+          };
+        })
+        .sort((a, b) => b.analysisScore - a.analysisScore),
+    [comparisons]
+  );
+
   const summary = useMemo(() => {
-    const allMetrics = comparisons.flatMap((project) => project.metrics);
-    const improvedProjects = comparisons.filter(
-      (project) => project.improvementScore > 0
+    const allMetrics = analysedComparisons.flatMap((project) => project.metrics);
+    const improvedProjects = analysedComparisons.filter(
+      (project) => project.negativeChanges === 0 && project.positiveChanges > 0
+    ).length;
+    const mixedProjects = analysedComparisons.filter(
+      (project) => project.positiveChanges > 0 && project.negativeChanges > 0
+    ).length;
+    const regressedProjects = analysedComparisons.filter(
+      (project) => project.positiveChanges === 0 && project.negativeChanges > 0
     ).length;
     const averageDelta = (label: string) => {
       const values = allMetrics.filter((metric) => metric.label === label);
@@ -255,21 +318,27 @@ export default function Comparison() {
     };
 
     return {
-      totalProjects: comparisons.length,
+      totalProjects: analysedComparisons.length,
       sprintRecords: historyRecords.length,
       improvedProjects,
-      completedSprints: comparisons.reduce(
+      mixedProjects,
+      regressedProjects,
+      completedSprints: analysedComparisons.reduce(
         (total, project) => total + project.completedSprints,
         0
       ),
       complexityReduction: averageDelta("Cyclomatic Complexity"),
       maintainabilityGain: averageDelta("Maintainability Index"),
-      smellReduction: averageDelta("Code Smells")
+      smellReduction: averageDelta("Code Smells"),
+      topProject: analysedComparisons[0] ?? null,
+      watchProject: [...analysedComparisons].sort(
+        (a, b) => a.analysisScore - b.analysisScore
+      )[0] ?? null
     };
-  }, [comparisons, historyRecords.length]);
+  }, [analysedComparisons, historyRecords.length]);
 
   const typeStats = useMemo(() => {
-    const grouped = comparisons.reduce<
+    const grouped = analysedComparisons.reduce<
       Record<
         string,
         {
@@ -278,6 +347,8 @@ export default function Comparison() {
           complexityReduction: number;
           maintainabilityGain: number;
           smellReduction: number;
+          analysisScore: number;
+          mixedProjects: number;
         }
       >
     >((groups, project) => {
@@ -287,9 +358,13 @@ export default function Comparison() {
         count: 0,
         complexityReduction: 0,
         maintainabilityGain: 0,
-        smellReduction: 0
+        smellReduction: 0,
+        analysisScore: 0,
+        mixedProjects: 0
       };
       groups[type].count += 1;
+      groups[type].analysisScore += project.analysisScore;
+      groups[type].mixedProjects += project.negativeChanges > 0 ? 1 : 0;
       groups[type].complexityReduction +=
         project.metrics.find((metric) => metric.label === "Cyclomatic Complexity")
           ?.delta ?? 0;
@@ -303,7 +378,34 @@ export default function Comparison() {
     }, {});
 
     return Object.values(grouped);
-  }, [comparisons]);
+  }, [analysedComparisons]);
+
+  const frameworkDistribution = useMemo(() => {
+    const getStats = (typeName: string) => {
+      const projects = analysedComparisons.filter(
+        (project) => project.projectType === typeName
+      );
+      const averageScore =
+        projects.reduce((total, project) => total + project.analysisScore, 0) /
+        (projects.length || 1);
+
+      return {
+        count: projects.length,
+        averageScore
+      };
+    };
+    const django = getStats("Django");
+    const flask = getStats("Flask");
+    const total = django.count + flask.count;
+
+    return {
+      django,
+      flask,
+      total,
+      djangoPercent: total ? (django.count / total) * 100 : 0,
+      flaskPercent: total ? (flask.count / total) * 100 : 0
+    };
+  }, [analysedComparisons]);
 
   const renderInsight = (
     icon: keyof typeof MaterialCommunityIcons.glyphMap,
@@ -321,44 +423,300 @@ export default function Comparison() {
     </View>
   );
 
-  const renderMetricComparison = (metric: ComparisonMetric) => {
-    const status = metric.delta > 0 ? "Improved" : metric.delta < 0 ? "Worse" : "No Change";
+  const renderMetricPill = (metric: ComparisonMetric | null, label: string) => {
+    if (!metric) {
+      return (
+        <View style={styles.metricPill}>
+          <Text style={styles.label}>{label}</Text>
+          <Text style={styles.insightDetail}>No metric data</Text>
+        </View>
+      );
+    }
+
     const color =
       metric.delta > 0 ? "#126B5D" : metric.delta < 0 ? "#9B1C1C" : "#555";
+
+    return (
+      <View style={styles.metricPill}>
+        <Text style={styles.label}>{label}</Text>
+        <Text style={[styles.metricValue, { color }]}>
+          {metric.label}: {metric.delta >= 0 ? "+" : ""}
+          {formatNumber(metric.delta)}
+          {metric.unit ?? ""}
+        </Text>
+      </View>
+    );
+  };
+
+  const toggleProject = (projectName: string) => {
+    const isOpen = openProjects.includes(projectName);
+
+    setOpenProjects((currentProjects) =>
+      isOpen
+        ? currentProjects.filter((name) => name !== projectName)
+        : [...currentProjects, projectName]
+    );
+
+    if (!isOpen) {
+      setTimeout(() => {
+        scrollRef.current?.scrollTo({
+          y: Math.max((projectPositions.current[projectName] ?? 0) - 12, 0),
+          animated: true
+        });
+      }, 100);
+    }
+  };
+
+  const renderAnalysisCard = (project: ProjectAnalysis, index: number) => {
+    const isOpen = openProjects.includes(project.projectName);
+    const status =
+      project.negativeChanges > 0
+        ? project.positiveChanges > 0
+          ? "Mixed Result"
+          : "Needs Attention"
+        : project.positiveChanges > 0
+          ? "Consistent Improvement"
+          : "Stable";
+    const color =
+      project.negativeChanges > 0
+        ? project.positiveChanges > 0
+          ? "#B45309"
+          : "#9B1C1C"
+        : project.positiveChanges > 0
+          ? "#126B5D"
+          : "#555";
     const backgroundColor =
-      metric.delta > 0 ? "#E4F7EF" : metric.delta < 0 ? "#FDE8E8" : "#F4F4F4";
+      project.negativeChanges > 0
+        ? project.positiveChanges > 0
+          ? "#FEF3C7"
+          : "#FDE8E8"
+        : project.positiveChanges > 0
+          ? "#E4F7EF"
+          : "#F4F4F4";
 
     return (
       <View
-        style={[
-          styles.metricRow,
-          {
-            backgroundColor,
-            borderBottomWidth: 0,
-            borderRadius: 10,
-            marginBottom: 8,
-            paddingHorizontal: 10
-          }
-        ]}
-        key={metric.label}
+        style={styles.projectCard}
+        key={project.projectName}
+        onLayout={(event) => {
+          projectPositions.current[project.projectName] = event.nativeEvent.layout.y;
+        }}
       >
-        <View style={styles.metricText}>
-          <Text style={styles.label}>{metric.label}</Text>
-          <Text style={styles.insightDetail}>
-            Previous {formatNumber(metric.previous)}
-            {metric.unit ?? ""} to now {formatNumber(metric.now)}
-            {metric.unit ?? ""}
-          </Text>
-        </View>
-        <View style={styles.metricResult}>
-          <Text style={[styles.metricValue, { color }]}>
-            {metric.delta >= 0 ? "+" : ""}
-            {formatNumber(metric.delta)}
-            {metric.unit ?? ""}
-          </Text>
-          <Text style={[styles.statusText, { color }]}>{status}</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ expanded: isOpen }}
+          onPress={() => toggleProject(project.projectName)}
+          style={styles.rankHeader}
+        >
+          <Text style={styles.rankBadge}>#{index + 1}</Text>
+          <View style={styles.metricText}>
+            <Text style={styles.projectTitle}>
+              <MaterialCommunityIcons
+                name={project.projectType === "Django" ? "language-python" : "flask"}
+                size={24}
+                color={project.projectType === "Django" ? "#000000" : "#F05A28"}
+                style={{ marginRight: 8 }}
+              />{" "}
+              {project.projectName}
+            </Text>
+            <Text style={styles.insightDetail}>
+              {project.records.length} records, sprint {project.completedSprints}/
+              {project.totalSprints || project.completedSprints}
+            </Text>
+          </View>
+          <View style={styles.projectListMeta}>
+            <View style={[styles.statusBadge, { backgroundColor }]}>
+              <Text style={[styles.statusBadgeText, { color }]}>{status}</Text>
+            </View>
+            <MaterialCommunityIcons
+              name={isOpen ? "chevron-up" : "chevron-down"}
+              size={24}
+              color="#123B36"
+            />
+          </View>
+        </Pressable>
+
+        {isOpen && (
+          <View style={styles.projectDetailPanel}>
+            <View style={styles.scoreRow}>
+              <View>
+                <Text style={styles.label}>Analytical Score</Text>
+                <Text style={[styles.value, { color }]}>
+                  {project.analysisScore >= 0 ? "+" : ""}
+                  {formatNumber(project.analysisScore)}%
+                </Text>
+              </View>
+              <View style={styles.metricResult}>
+                <Text style={styles.label}>Metric Movement</Text>
+                <Text style={styles.projectDetails}>
+                  {project.positiveChanges} up, {project.negativeChanges} down,{" "}
+                  {project.stableChanges} flat
+                </Text>
+              </View>
+            </View>
+
+            {renderMetricPill(project.strongestMetric, "Strongest Movement")}
+            {renderMetricPill(project.weakestMetric, "Weakest Movement")}
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  const renderFrameworkPie = () => {
+    const radius = 42;
+    const circumference = 2 * Math.PI * radius;
+    const djangoDash = (frameworkDistribution.djangoPercent / 100) * circumference;
+
+    return (
+      <View style={styles.card}>
+        <Text style={styles.sectionTitle}>Django vs Flask Projects</Text>
+        <View style={styles.pieWidget}>
+          <View style={styles.pieChartWrap}>
+            <Svg width={112} height={112} viewBox="0 0 112 112">
+              <Circle
+                cx="56"
+                cy="56"
+                r={radius}
+                stroke={frameworkDistribution.total ? "#F05A28" : "#E5E7EB"}
+                strokeWidth="20"
+                fill="none"
+              />
+              <Circle
+                cx="56"
+                cy="56"
+                r={radius}
+                stroke="#126B5D"
+                strokeWidth="20"
+                fill="none"
+                strokeDasharray={`${djangoDash} ${circumference}`}
+                strokeLinecap="butt"
+                transform="rotate(-90 56 56)"
+              />
+            </Svg>
+            <View style={styles.pieCenter}>
+              <Text style={styles.pieTotal}>{frameworkDistribution.total}</Text>
+              <Text style={styles.pieCaption}>projects</Text>
+            </View>
+          </View>
+
+          <View style={styles.pieLegend}>
+            <View style={styles.legendRow}>
+              <View style={[styles.legendDot, { backgroundColor: "#126B5D" }]} />
+              <View style={styles.metricText}>
+                <Text style={styles.projectDetails}>
+                  Django {frameworkDistribution.django.count}
+                </Text>
+                <Text style={styles.insightDetail}>
+                  {formatNumber(frameworkDistribution.djangoPercent, 1)}% share,{" "}
+                  {formatNumber(frameworkDistribution.django.averageScore)}% avg score
+                </Text>
+              </View>
+            </View>
+            <View style={styles.legendRow}>
+              <View style={[styles.legendDot, { backgroundColor: "#F05A28" }]} />
+              <View style={styles.metricText}>
+                <Text style={styles.projectDetails}>
+                  Flask {frameworkDistribution.flask.count}
+                </Text>
+                <Text style={styles.insightDetail}>
+                  {formatNumber(frameworkDistribution.flaskPercent, 1)}% share,{" "}
+                  {formatNumber(frameworkDistribution.flask.averageScore)}% avg score
+                </Text>
+              </View>
+            </View>
+          </View>
         </View>
       </View>
+    );
+  };
+
+  const renderTypeBar = (
+    label: string,
+    value: number,
+    maxValue: number,
+    unit = "",
+    preferPositive = true
+  ) => {
+    const width: DimensionValue = `${Math.max(
+      (Math.abs(value) / Math.max(Math.abs(maxValue), 1)) * 100,
+      5
+    )}%`;
+    const improved = preferPositive ? value >= 0 : value <= 0;
+    const color = improved ? "#126B5D" : "#9B1C1C";
+
+    return (
+      <View style={styles.typeBarRow} key={label}>
+        <View style={styles.typeBarHeader}>
+          <Text style={styles.typeBarLabel}>{label}</Text>
+          <Text style={[styles.typeBarValue, { color }]}>
+            {value >= 0 ? "+" : ""}
+            {formatNumber(value)}
+            {unit}
+          </Text>
+        </View>
+        <View style={styles.typeBarTrack}>
+          <View style={[styles.typeBarFill, { backgroundColor: color, width }]} />
+        </View>
+      </View>
+    );
+  };
+
+  const renderTypeComparison = () => {
+    if (typeStats.length === 0) return null;
+
+    const averages = typeStats.map((type) => ({
+      ...type,
+      avgScore: type.analysisScore / type.count,
+      avgComplexity: type.complexityReduction / type.count,
+      avgMaintainability: type.maintainabilityGain / type.count,
+      avgSmells: type.smellReduction / type.count
+    }));
+    const maxScore = Math.max(...averages.map((type) => Math.abs(type.avgScore)), 1);
+    const maxComplexity = Math.max(
+      ...averages.map((type) => Math.abs(type.avgComplexity)),
+      1
+    );
+    const maxMaintainability = Math.max(
+      ...averages.map((type) => Math.abs(type.avgMaintainability)),
+      1
+    );
+    const maxSmells = Math.max(...averages.map((type) => Math.abs(type.avgSmells)), 1);
+
+    return (
+      <>
+        <ThemedView style={styles.titleContainer}>
+          <ThemedText type="title" style={{ fontSize: 25 }}>
+            TYPE COMPARISON
+          </ThemedText>
+        </ThemedView>
+
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Framework Comparison Bars</Text>
+          {averages.map((type) => (
+            <View style={styles.typeBlock} key={type.type}>
+              <View style={styles.typeHeaderRow}>
+                <Text style={styles.projectTitle}>{type.type}</Text>
+                <Text style={styles.insightDetail}>
+                  {type.count} projects, {type.mixedProjects} needing review
+                </Text>
+              </View>
+              {renderTypeBar("Analytical score", type.avgScore, maxScore, "%")}
+              {renderTypeBar(
+                "Complexity reduction",
+                type.avgComplexity,
+                maxComplexity
+              )}
+              {renderTypeBar(
+                "Maintainability gain",
+                type.avgMaintainability,
+                maxMaintainability
+              )}
+              {renderTypeBar("Smells removed", type.avgSmells, maxSmells)}
+            </View>
+          ))}
+        </View>
+      </>
     );
   };
 
@@ -372,7 +730,11 @@ export default function Comparison() {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      ref={scrollRef}
+      style={styles.container}
+      contentContainerStyle={styles.scrollContent}
+    >
       <Text style={styles.title}>Previous Sprint vs Now</Text>
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title" style={{ fontSize: 25 }}>
@@ -387,32 +749,46 @@ export default function Comparison() {
 
       <View style={styles.statsGrid}>
         {renderInsight(
-          "source-branch",
-          "Sprint Records Used",
-          summary.sprintRecords || summary.totalProjects * 2,
-          "Each project compares earliest available sprint against latest"
-        )}
-        {renderInsight(
           "check-decagram",
-          "Projects Improved",
+          "Clean Improvements",
           `${summary.improvedProjects}/${summary.totalProjects}`,
-          "A project counts as improved when at least one metric moved positively"
+          "Projects with positive movement and no metric regression"
         )}
         {renderInsight(
-          "chart-line",
-          "Avg Complexity Reduction",
-          formatNumber(summary.complexityReduction),
-          "Lower complexity is better"
+          "alert-circle",
+          "Mixed or Regressed",
+          summary.mixedProjects + summary.regressedProjects,
+          "Projects with at least one metric moving the wrong way"
         )}
         {renderInsight(
-          "shield-check",
-          "Avg Maintainability Gain",
-          formatNumber(summary.maintainabilityGain),
-          "Higher maintainability is better"
+          "trophy",
+          "Best Overall",
+          summary.topProject?.projectName ?? "No data",
+          summary.topProject
+            ? `${formatNumber(summary.topProject.analysisScore)}% combined movement`
+            : "Add sprint records to rank projects"
+        )}
+        {renderInsight(
+          "magnify",
+          "Needs Review",
+          summary.watchProject?.projectName ?? "No data",
+          summary.watchProject
+            ? `${formatNumber(summary.watchProject.analysisScore)}% combined movement`
+            : "Add sprint records to reveal risk"
         )}
       </View>
 
-      {comparisons.length === 0 ? (
+      {renderFrameworkPie()}
+
+      {renderTypeComparison()}
+
+      <ThemedView style={styles.titleContainer}>
+        <ThemedText type="title" style={{ fontSize: 25 }}>
+          PROJECT RANKING
+        </ThemedText>
+      </ThemedView>
+
+      {analysedComparisons.length === 0 ? (
         <View style={styles.card}>
           <Text style={styles.projectTitle}>No comparison records found</Text>
           <Text style={styles.projectDetails}>
@@ -420,87 +796,7 @@ export default function Comparison() {
           </Text>
         </View>
       ) : (
-        comparisons.map((project) => (
-          <View style={styles.projectCard} key={project.projectName}>
-            <Text style={styles.projectTitle}>
-              <MaterialCommunityIcons
-                name={
-                  project.projectType === "Django" ? "language-python" : "flask"
-                }
-                size={24}
-                color={project.projectType === "Django" ? "#000000" : "#F05A28"}
-                style={{ marginRight: 8 }}
-              />{" "}
-              {project.projectName}
-            </Text>
-
-            <View style={styles.stageBox}>
-              <View style={styles.stageColumn}>
-                <Text style={styles.stageLabel}>Previous Sprint</Text>
-                <Text style={styles.projectDetails}>
-                  Sprint {toNumber(project.previous.completed_sprints)}/
-                  {toNumber(project.previous.total_sprints) || project.totalSprints}
-                </Text>
-                <Text style={styles.insightDetail}>
-                  {formatStage(project.previous.measurement_stage)}
-                </Text>
-              </View>
-
-              <MaterialCommunityIcons name="arrow-right" size={22} color="#36BBA7" />
-
-              <View style={styles.stageColumn}>
-                <Text style={styles.stageLabel}>Now</Text>
-                <Text style={styles.projectDetails}>
-                  Sprint {toNumber(project.now.completed_sprints)}/
-                  {toNumber(project.now.total_sprints) || project.totalSprints}
-                </Text>
-                <Text style={styles.insightDetail}>
-                  {formatStage(project.now.measurement_stage)}
-                </Text>
-              </View>
-            </View>
-
-            {project.metrics.map(renderMetricComparison)}
-
-            <Text style={styles.projectDetails}>
-              Sprint history included: {project.records.length} records
-            </Text>
-          </View>
-        ))
-      )}
-
-      {typeStats.length > 0 && (
-        <>
-          <ThemedView style={styles.titleContainer}>
-            <ThemedText type="title" style={{ fontSize: 25 }}>
-              TYPE COMPARISON
-            </ThemedText>
-          </ThemedView>
-
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Comparison by Project Type</Text>
-            {typeStats.map((type) => (
-              <View style={styles.typeBlock} key={type.type}>
-                <Text style={styles.projectTitle}>{type.type}</Text>
-                <Text style={styles.projectDetails}>
-                  Projects compared: {type.count}
-                </Text>
-                <Text style={styles.projectDetails}>
-                  Avg complexity reduction:{" "}
-                  {formatNumber(type.complexityReduction / type.count)}
-                </Text>
-                <Text style={styles.projectDetails}>
-                  Avg maintainability gain:{" "}
-                  {formatNumber(type.maintainabilityGain / type.count)}
-                </Text>
-                <Text style={styles.projectDetails}>
-                  Avg code smells removed:{" "}
-                  {formatNumber(type.smellReduction / type.count)}
-                </Text>
-              </View>
-            ))}
-          </View>
-        </>
+        analysedComparisons.map(renderAnalysisCard)
       )}
     </ScrollView>
   );
@@ -508,6 +804,9 @@ export default function Comparison() {
 
 const styles = StyleSheet.create({
   container: { backgroundColor: "#0E2A25", flex: 1, padding: 16, paddingTop: 28 },
+  scrollContent: {
+    paddingBottom: 96
+  },
   title: { color: "#F4FBFA", fontSize: 24, fontWeight: "bold", marginBottom: 20 },
   titleContainer: {
     flexDirection: "row",
@@ -567,6 +866,12 @@ const styles = StyleSheet.create({
   metricResult: {
     alignItems: "flex-end"
   },
+  metricPill: {
+    backgroundColor: "#F4FBFA",
+    borderRadius: 10,
+    marginTop: 8,
+    padding: 10
+  },
   metricValue: {
     fontSize: 16,
     fontWeight: "bold",
@@ -578,11 +883,58 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginTop: 2
   },
+  rankHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10,
+    padding: 12
+  },
+  rankBadge: {
+    backgroundColor: "#123B36",
+    borderRadius: 8,
+    color: "#F4FBFA",
+    fontSize: 16,
+    fontWeight: "bold",
+    minWidth: 38,
+    overflow: "hidden",
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    textAlign: "center"
+  },
+  statusBadge: {
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: "bold",
+    textAlign: "center"
+  },
+  projectListMeta: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 4
+  },
+  projectDetailPanel: {
+    borderTopColor: "#e0e0e0",
+    borderTopWidth: 1,
+    padding: 12,
+    paddingTop: 8
+  },
+  scoreRow: {
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+    borderRadius: 10,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 4,
+    padding: 10
+  },
   label: { fontSize: 16, color: "#555" },
   value: { fontSize: 20, fontWeight: "bold", marginTop: 5 },
   projectCard: {
     backgroundColor: "white",
-    padding: 12,
     borderRadius: 20,
     borderColor: "#36BBA7",
     borderWidth: 1,
@@ -596,6 +948,88 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
     marginBottom: 10
+  },
+  pieWidget: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 14
+  },
+  pieChartWrap: {
+    height: 112,
+    justifyContent: "center",
+    position: "relative",
+    width: 112
+  },
+  pieCenter: {
+    alignItems: "center",
+    bottom: 0,
+    justifyContent: "center",
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: 0
+  },
+  pieTotal: {
+    color: "#123B36",
+    fontSize: 22,
+    fontWeight: "bold"
+  },
+  pieCaption: {
+    color: "#555",
+    fontSize: 12,
+    fontWeight: "bold"
+  },
+  pieLegend: {
+    flex: 1,
+    gap: 10
+  },
+  legendRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10
+  },
+  legendDot: {
+    borderRadius: 6,
+    height: 12,
+    width: 12
+  },
+  typeHeaderRow: {
+    alignItems: "baseline",
+    flexDirection: "row",
+    gap: 8,
+    justifyContent: "space-between",
+    marginBottom: 6
+  },
+  typeBarRow: {
+    marginBottom: 9
+  },
+  typeBarHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 4
+  },
+  typeBarLabel: {
+    color: "#555",
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "bold",
+    paddingRight: 8
+  },
+  typeBarValue: {
+    fontSize: 13,
+    fontWeight: "bold",
+    textAlign: "right"
+  },
+  typeBarTrack: {
+    backgroundColor: "#E8E8E8",
+    borderRadius: 8,
+    height: 10,
+    overflow: "hidden"
+  },
+  typeBarFill: {
+    borderRadius: 8,
+    height: "100%"
   },
   stageBox: {
     alignItems: "center",

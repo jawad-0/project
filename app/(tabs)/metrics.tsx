@@ -1,8 +1,14 @@
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useEffect, useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View
+} from "react-native";
 
 const API_IP = "172.20.10.6"; // replace with your backend IP
 const METRICS_API_URL = `http://${API_IP}:5000/api/metrics`;
@@ -53,6 +59,8 @@ type ProjectSprintMetrics = {
   changes: MetricChange[];
   totalSprints: number;
   completedSprints: number;
+  qualityScore: number;
+  riskLevel: string;
 };
 
 const toNumber = (value: number | string | null | undefined) => {
@@ -107,21 +115,31 @@ const buildChanges = (first: HistoryRecord, latest: HistoryRecord): MetricChange
     after: toNumber(latest.code_smells),
     change: toNumber(first.code_smells) - toNumber(latest.code_smells),
     improved: toNumber(latest.code_smells) < toNumber(first.code_smells)
-  },
-  {
-    label: "Response Time",
-    before: toNumber(first.response_time_ms),
-    after: toNumber(latest.response_time_ms),
-    change: toNumber(first.response_time_ms) - toNumber(latest.response_time_ms),
-    improved: toNumber(latest.response_time_ms) < toNumber(first.response_time_ms),
-    unit: " ms"
   }
 ];
+
+const getQualityScore = (record: HistoryRecord) => {
+  const maintainability = Math.min(toNumber(record.maintainability_index), 100);
+  const complexityPenalty = Math.min(toNumber(record.cyclomatic_complexity) * 3, 35);
+  const smellPenalty = Math.min(toNumber(record.code_smells) * 2, 35);
+
+  return Math.max(0, Math.min(100, maintainability - complexityPenalty - smellPenalty));
+};
+
+const getRiskLevel = (score: number) => {
+  if (score >= 70) return "Good";
+  if (score >= 40) return "Needs Improvement";
+
+  return "Needs Work";
+};
 
 export default function Metrics() {
   const [projects, setProjects] = useState<ProjectMetric[]>([]);
   const [historyRecords, setHistoryRecords] = useState<HistoryRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [openProjects, setOpenProjects] = useState<string[]>([]);
+  const scrollRef = useRef<ScrollView>(null);
+  const projectPositions = useRef<Record<string, number>>({});
 
   useEffect(() => {
     const fetchProjects = fetch(`${METRICS_API_URL}/projects`)
@@ -163,7 +181,9 @@ export default function Metrics() {
           totalSprints: Math.max(...sortedRecords.map((r) => toNumber(r.total_sprints))),
           completedSprints: Math.max(
             ...sortedRecords.map((r) => toNumber(r.completed_sprints))
-          )
+          ),
+          qualityScore: getQualityScore(latest),
+          riskLevel: getRiskLevel(getQualityScore(latest))
         };
       })
       .sort((a, b) => a.projectName.localeCompare(b.projectName));
@@ -201,11 +221,11 @@ export default function Metrics() {
           records: [first, latest],
           first,
           latest,
-          changes: buildChanges(first, latest).filter(
-            (change) => change.label !== "Response Time"
-          ),
+          changes: buildChanges(first, latest),
           totalSprints: 1,
-          completedSprints: 1
+          completedSprints: 1,
+          qualityScore: getQualityScore(latest),
+          riskLevel: getRiskLevel(getQualityScore(latest))
         };
       }),
     [projects]
@@ -235,7 +255,13 @@ export default function Metrics() {
       ),
       complexityGain: getAverageChange("Cyclomatic Complexity"),
       maintainabilityGain: getAverageChange("Maintainability Index"),
-      smellReduction: getAverageChange("Code Smells")
+      smellReduction: getAverageChange("Code Smells"),
+      averageQualityScore:
+        displayedProjects.reduce((total, project) => total + project.qualityScore, 0) /
+        (displayedProjects.length || 1),
+      needsWorkProjects: displayedProjects.filter(
+        (project) => project.riskLevel === "Needs Work"
+      ).length
     };
   }, [displayedProjects, historyRecords.length]);
 
@@ -290,6 +316,144 @@ export default function Metrics() {
     </View>
   );
 
+  const renderQualityScoreRow = (project: ProjectSprintMetrics) => {
+    const color =
+      project.riskLevel === "Good"
+        ? "#126B5D"
+        : project.riskLevel === "Needs Improvement"
+          ? "#B45309"
+          : "#9B1C1C";
+    const backgroundColor =
+      project.riskLevel === "Good"
+        ? "#E4F7EF"
+        : project.riskLevel === "Needs Improvement"
+          ? "#FEF3C7"
+          : "#FDE8E8";
+
+    return (
+      <View style={[styles.metricRow, styles.highlightMetricRow, { backgroundColor }]}>
+        <View style={styles.metricText}>
+          <Text style={styles.label}>Quality Score</Text>
+          <Text style={styles.insightDetail}>
+            Higher is better, based on latest sprint code quality
+          </Text>
+        </View>
+        <View style={styles.metricResult}>
+          <Text style={[styles.metricValue, { color }]}>
+            {formatNumber(project.qualityScore)}/100
+          </Text>
+          <Text style={[styles.statusText, { color }]}>{project.riskLevel}</Text>
+        </View>
+      </View>
+    );
+  };
+
+  const toggleProject = (projectName: string) => {
+    const isOpen = openProjects.includes(projectName);
+
+    setOpenProjects((currentProjects) =>
+      isOpen
+        ? currentProjects.filter((name) => name !== projectName)
+        : [...currentProjects, projectName]
+    );
+
+    if (!isOpen) {
+      setTimeout(() => {
+        scrollRef.current?.scrollTo({
+          y: Math.max((projectPositions.current[projectName] ?? 0) - 12, 0),
+          animated: true
+        });
+      }, 100);
+    }
+  };
+
+  const renderProjectItem = (project: ProjectSprintMetrics) => {
+    const isOpen = openProjects.includes(project.projectName);
+    const scoreColor =
+      project.riskLevel === "Good"
+        ? "#126B5D"
+        : project.riskLevel === "Needs Improvement"
+          ? "#B45309"
+          : "#9B1C1C";
+
+    return (
+      <View
+        style={styles.projectCard}
+        key={project.projectName}
+        onLayout={(event) => {
+          projectPositions.current[project.projectName] = event.nativeEvent.layout.y;
+        }}
+      >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ expanded: isOpen }}
+          onPress={() => toggleProject(project.projectName)}
+          style={styles.projectListRow}
+        >
+          <View style={styles.projectListMain}>
+            <Text style={styles.projectTitle}>
+              <MaterialCommunityIcons
+                name={project.projectType === "Django" ? "language-python" : "flask"}
+                size={24}
+                color={project.projectType === "Django" ? "#000000" : "#F05A28"}
+                style={{ marginRight: 8 }}
+              />{" "}
+              {project.projectName}
+            </Text>
+            <Text style={styles.insightDetail}>
+              {project.records.length} records, {project.completedSprints}/
+              {project.totalSprints || project.completedSprints} sprints completed
+            </Text>
+          </View>
+
+          <View style={styles.projectListMeta}>
+            <Text style={[styles.metricValue, { color: scoreColor }]}>
+              {formatNumber(project.qualityScore)}/100
+            </Text>
+            <MaterialCommunityIcons
+              name={isOpen ? "chevron-up" : "chevron-down"}
+              size={24}
+              color="#123B36"
+            />
+          </View>
+        </Pressable>
+
+        {isOpen && (
+          <View style={styles.projectDetailPanel}>
+            <View style={styles.metricRow}>
+              <Text style={styles.label}>Sprints used</Text>
+              <Text style={styles.metricValue}>
+                {project.records.length} records, {project.completedSprints}/
+                {project.totalSprints || project.completedSprints} completed
+              </Text>
+            </View>
+
+            {renderQualityScoreRow(project)}
+
+            {project.changes.map(renderChangeRow)}
+
+            <Text style={styles.sectionTitle}>Previous Sprint Records</Text>
+            {project.records.map((record) => (
+              <View style={styles.sprintBlock} key={`${record.id}-${record.measured_at}`}>
+                <Text style={styles.projectDetails}>
+                  Sprint {toNumber(record.completed_sprints)}/
+                  {toNumber(record.total_sprints) || project.totalSprints} -{" "}
+                  {formatStage(record.measurement_stage)}
+                </Text>
+                <Text style={styles.insightDetail}>
+                  Complexity {formatNumber(toNumber(record.cyclomatic_complexity))}
+                  {" | "}Maintainability{" "}
+                  {formatNumber(toNumber(record.maintainability_index))}
+                  {" | "}Smells {toNumber(record.code_smells)}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
+    );
+  };
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -300,7 +464,11 @@ export default function Metrics() {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      ref={scrollRef}
+      style={styles.container}
+      contentContainerStyle={styles.scrollContent}
+    >
       <Text style={styles.title}>Code Quality Metrics</Text>
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title" style={{ fontSize: 25 }}>
@@ -319,6 +487,12 @@ export default function Metrics() {
           "Completed Sprints",
           summary.totalCompletedSprints,
           `${summary.totalSprintRecords} historical sprint records included`
+        )}
+        {renderInsight(
+          "gauge",
+          "Avg Quality Score",
+          formatNumber(summary.averageQualityScore),
+          `${summary.needsWorkProjects} projects need work`
         )}
         {renderInsight(
           "chart-line",
@@ -354,51 +528,7 @@ export default function Metrics() {
           </Text>
         </View>
       ) : (
-        displayedProjects.map((project) => (
-          <View style={styles.projectCard} key={project.projectName}>
-            <Text style={styles.projectTitle}>
-              <MaterialCommunityIcons
-                name={
-                  project.projectType === "Django" ? "language-python" : "flask"
-                }
-                size={24}
-                color={project.projectType === "Django" ? "#000000" : "#F05A28"}
-                style={{ marginRight: 8 }}
-              />{" "}
-              {project.projectName}
-            </Text>
-
-            <View style={styles.metricRow}>
-              <Text style={styles.label}>Sprints used</Text>
-              <Text style={styles.metricValue}>
-                {project.records.length} records, {project.completedSprints}/
-                {project.totalSprints || project.completedSprints} completed
-              </Text>
-            </View>
-
-            {project.changes.map(renderChangeRow)}
-
-            <Text style={styles.sectionTitle}>Previous Sprint Records</Text>
-            {project.records.map((record) => (
-              <View style={styles.sprintBlock} key={`${record.id}-${record.measured_at}`}>
-                <Text style={styles.projectDetails}>
-                  Sprint {toNumber(record.completed_sprints)}/
-                  {toNumber(record.total_sprints) || project.totalSprints} -{" "}
-                  {formatStage(record.measurement_stage)}
-                </Text>
-                <Text style={styles.insightDetail}>
-                  Complexity {formatNumber(toNumber(record.cyclomatic_complexity))}
-                  {" | "}Maintainability{" "}
-                  {formatNumber(toNumber(record.maintainability_index))}
-                  {" | "}Smells {toNumber(record.code_smells)}
-                  {record.response_time_ms != null
-                    ? ` | Response ${toNumber(record.response_time_ms)} ms`
-                    : ""}
-                </Text>
-              </View>
-            ))}
-          </View>
-        ))
+        displayedProjects.map(renderProjectItem)
       )}
     </ScrollView>
   );
@@ -406,6 +536,9 @@ export default function Metrics() {
 
 const styles = StyleSheet.create({
   container: { backgroundColor: "#0E2A25", flex: 1, padding: 16, paddingTop: 28 },
+  scrollContent: {
+    paddingBottom: 96
+  },
   title: { color: "#F4FBFA", fontSize: 24, fontWeight: "bold", marginBottom: 20 },
   titleContainer: {
     flexDirection: "row",
@@ -469,22 +602,56 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingRight: 12
   },
+  metricResult: {
+    alignItems: "flex-end"
+  },
   metricValue: {
     fontSize: 16,
     fontWeight: "bold",
     marginLeft: 12,
     textAlign: "right"
   },
+  statusText: {
+    fontSize: 12,
+    fontWeight: "bold",
+    marginTop: 2
+  },
+  highlightMetricRow: {
+    borderRadius: 10,
+    marginBottom: 8,
+    paddingHorizontal: 10
+  },
   label: { fontSize: 16, color: "#555" },
   value: { color: "#126B5D", fontSize: 20, fontWeight: "bold", marginTop: 5 },
   projectCard: {
     backgroundColor: "white",
-    padding: 12,
     borderRadius: 20,
     borderColor: "#36BBA7",
     borderWidth: 1,
     borderStyle: "dashed",
     marginBottom: 10
+  },
+  projectListRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10,
+    justifyContent: "space-between",
+    padding: 12
+  },
+  projectListMain: {
+    flex: 1,
+    paddingRight: 8
+  },
+  projectListMeta: {
+    alignItems: "flex-end",
+    flexDirection: "row",
+    gap: 4
+  },
+  projectDetailPanel: {
+    borderTopColor: "#e0e0e0",
+    borderTopWidth: 1,
+    padding: 12,
+    paddingTop: 8
   },
   projectTitle: { color: "#123B36", fontSize: 20, fontWeight: "bold", marginBottom: 5 },
   projectDetails: { fontSize: 16, fontWeight: "bold" },

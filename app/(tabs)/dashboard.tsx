@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -44,6 +44,7 @@ export default function Dashboard() {
     avgMaintainabilityGain: "0.00"
   });
   const [loading, setLoading] = useState(true);
+  const [openProjects, setOpenProjects] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchProjects = fetch(`${API_BASE_URL}/`)
@@ -270,8 +271,160 @@ export default function Dashboard() {
     color: value > 0 ? "#126B5D" : value < 0 ? "#9B1C1C" : "#555"
   });
 
+  const toggleProject = (projectId: string) => {
+    setOpenProjects((currentProjects) =>
+      currentProjects.includes(projectId)
+        ? currentProjects.filter((id) => id !== projectId)
+        : [...currentProjects, projectId]
+    );
+  };
+
+  const renderDetailRow = (
+    label: string,
+    before: number | string | null,
+    after: number | string | null,
+    direction: "lower" | "higher"
+  ) => {
+    const beforeValue = toNumber(before);
+    const afterValue = toNumber(after);
+    const change = direction === "lower" ? beforeValue - afterValue : afterValue - beforeValue;
+    const percent = beforeValue ? (change / Math.abs(beforeValue)) * 100 : 0;
+    const badgeStyle = getChangeBadgeStyle(change);
+
+    return (
+      <View style={styles.detailRow} key={label}>
+        <View style={styles.detailHeader}>
+          <Text style={styles.label}>{label}</Text>
+          <Text style={[styles.percentBadge, { color: badgeStyle.color }]}>
+            {percent >= 0 ? "+" : ""}
+            {formatNumber(percent)}%
+          </Text>
+        </View>
+
+        <View style={styles.beforeAfterRow}>
+          <View style={styles.compareBlock}>
+            <Text style={styles.compareLabel}>Before</Text>
+            <Text style={styles.compareValue}>{before ?? "N/A"}</Text>
+          </View>
+          <MaterialCommunityIcons name="arrow-right" size={18} color="#36BBA7" />
+          <View
+            style={[
+              styles.compareBlock,
+              { backgroundColor: badgeStyle.backgroundColor }
+            ]}
+          >
+            <Text style={styles.compareLabel}>After</Text>
+            <Text style={[styles.compareValue, { color: badgeStyle.color }]}>
+              {after ?? "N/A"}
+            </Text>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  const renderChangePill = (label: string, value: number, suffix = "") => {
+    const badgeStyle = getChangeBadgeStyle(value);
+
+    return (
+      <View
+        style={[styles.changePill, { backgroundColor: badgeStyle.backgroundColor }]}
+        key={label}
+      >
+        <Text style={styles.changeLabel}>{label}</Text>
+        <Text style={[styles.changeValue, { color: badgeStyle.color }]}>
+          {value >= 0 ? "+" : ""}
+          {formatNumber(value)}
+          {suffix}
+        </Text>
+      </View>
+    );
+  };
+
+  const renderProjectCard = (project: (typeof analysedProjects)[number]) => {
+    const projectId = String(project.id);
+    const isOpen = openProjects.includes(projectId);
+    const badgeStyle = getChangeBadgeStyle(project.totalImprovement);
+
+    return (
+      <View
+        key={project.id}
+        style={styles.projectCard}
+      >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ expanded: isOpen }}
+          onPress={() => toggleProject(projectId)}
+          style={styles.projectListRow}
+        >
+          <View style={styles.projectListMain}>
+            <Text style={styles.projectTitle}>
+              <MaterialCommunityIcons
+                name={project.project_type === "Django" ? "language-python" : "flask"}
+                size={24}
+                color={project.project_type === "Django" ? "#000000" : "#F05A28"}
+                style={{ marginRight: 8 }}
+              />{" "}
+              {project.project_name}
+            </Text>
+            <Text style={styles.insightDetail}>{project.project_type || "Unknown"}</Text>
+          </View>
+
+          <View style={styles.projectListMeta}>
+            <Text style={[styles.projectScore, { color: badgeStyle.color }]}>
+              {project.totalImprovement >= 0 ? "+" : ""}
+              {formatNumber(project.totalImprovement)}
+            </Text>
+            <MaterialCommunityIcons
+              name={isOpen ? "chevron-up" : "chevron-down"}
+              size={24}
+              color="#123B36"
+            />
+          </View>
+        </Pressable>
+
+        {isOpen && (
+          <View style={styles.projectDetailPanel}>
+            <View style={styles.changeGrid}>
+              {renderChangePill("Performance", project.performanceGain, "%")}
+              {renderChangePill("Complexity", project.complexityGain, "%")}
+              {renderChangePill("Maintainability", project.maintainabilityGain, "%")}
+              {renderChangePill("Smells Removed", project.smellReduction)}
+            </View>
+
+            <Text style={styles.sectionTitle}>Before / After</Text>
+            {renderDetailRow(
+              "Performance",
+              project.performance_before,
+              project.performance_after,
+              "lower"
+            )}
+            {renderDetailRow(
+              "Complexity",
+              project.avg_complexity_before,
+              project.avg_complexity_after,
+              "lower"
+            )}
+            {renderDetailRow(
+              "Maintainability",
+              project.avg_maintainability_before,
+              project.avg_maintainability_after,
+              "higher"
+            )}
+            {renderDetailRow(
+              "Code Smells",
+              project.code_smells_before,
+              project.code_smells_after,
+              "lower"
+            )}
+          </View>
+        )}
+      </View>
+    );
+  };
+
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       <Text style={styles.title}>Refactoring Dashboard</Text>
       <ThemedView style={styles.titleContainer}>
         <ThemedText
@@ -415,92 +568,7 @@ export default function Dashboard() {
             PROJECT BREAKDOWN
           </ThemedText>
         </ThemedView>
-        {analysedProjects.map((project) => (
-          <View key={project.id} style={styles.projectCard}>
-            <Text style={styles.projectTitle}>
-              <MaterialCommunityIcons
-                name={
-                  project.project_type === "Django"
-                    ? "language-python"
-                    : "flask"
-                }
-                size={24}
-                color={
-                  project.project_type === "Django" ? "#000000" : "#F05A28"
-                }
-                style={{ marginRight: 8 }}
-              />{" "}
-              {project.project_name}
-            </Text>
-            <Text></Text>
-            <Text style={styles.projectDetails}>
-              - Performance Before: {project.performance_before}
-            </Text>
-            <Text style={styles.projectDetails}>
-              - Performance After: {project.performance_after}
-            </Text>
-            <Text></Text>
-            <Text style={styles.projectDetails}>
-              - Average Complexity Before: {project.avg_complexity_before}
-            </Text>
-            <Text style={styles.projectDetails}>
-              - Average Complexity After: {project.avg_complexity_after}
-            </Text>
-            <Text></Text>
-            <Text style={styles.projectDetails}>
-              - Average Maintainability Before:{" "}
-              {project.avg_maintainability_before}
-            </Text>
-            <Text style={styles.projectDetails}>
-              - Average Maintainability After:{" "}
-              {project.avg_maintainability_after}
-            </Text>
-            <Text></Text>
-            <Text style={styles.projectDetails}>
-              - Code Smells Before: {project.code_smells_before}
-            </Text>
-            <Text style={styles.projectDetails}>
-              - Code Smells After: {project.code_smells_after}
-            </Text>
-            <Text></Text>
-            <Text
-              style={[
-                styles.projectDetails,
-                styles.changeBadge,
-                getChangeBadgeStyle(project.performanceGain)
-              ]}
-            >
-              - Performance Gain: {formatNumber(project.performanceGain)}%
-            </Text>
-            <Text
-              style={[
-                styles.projectDetails,
-                styles.changeBadge,
-                getChangeBadgeStyle(project.complexityGain)
-              ]}
-            >
-              - Complexity Gain: {formatNumber(project.complexityGain)}%
-            </Text>
-            <Text
-              style={[
-                styles.projectDetails,
-                styles.changeBadge,
-                getChangeBadgeStyle(project.maintainabilityGain)
-              ]}
-            >
-              - Maintainability Gain: {formatNumber(project.maintainabilityGain)}%
-            </Text>
-            <Text
-              style={[
-                styles.projectDetails,
-                styles.changeBadge,
-                getChangeBadgeStyle(project.smellReduction)
-              ]}
-            >
-              - Code Smells Removed: {project.smellReduction}
-            </Text>
-          </View>
-        ))}
+        {analysedProjects.map(renderProjectCard)}
       </View>
     </ScrollView>
   );
@@ -508,6 +576,9 @@ export default function Dashboard() {
 
 const styles = StyleSheet.create({
   container: { backgroundColor: "#0E2A25", flex: 1, padding: 16, paddingTop: 28 },
+  scrollContent: {
+    paddingBottom: 96
+  },
   title: { color: "#F4FBFA", fontSize: 24, fontWeight: "bold", marginBottom: 20 },
   titleContainer: {
     flexDirection: "row",
@@ -588,19 +659,98 @@ const styles = StyleSheet.create({
   value: { color: "#126B5D", fontSize: 20, fontWeight: "bold", marginTop: 5 },
   projectCard: {
     backgroundColor: "white",
-    padding: 12,
     borderRadius: 20,
     borderColor: "#36BBA7",
     borderWidth: 1,
     borderStyle: "dashed",
     marginBottom: 10
   },
+  projectListRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10,
+    justifyContent: "space-between",
+    padding: 12
+  },
+  projectListMain: {
+    flex: 1,
+    paddingRight: 8
+  },
+  projectListMeta: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 4
+  },
+  projectDetailPanel: {
+    borderTopColor: "#e0e0e0",
+    borderTopWidth: 1,
+    padding: 12,
+    paddingTop: 8
+  },
   projectTitle: { color: "#123B36", fontSize: 20, fontWeight: "bold", marginBottom: 5 },
   projectDetails: { fontSize: 16, fontWeight: "bold" },
-  changeBadge: {
+  projectScore: {
+    fontSize: 16,
+    fontWeight: "bold",
+    textAlign: "right"
+  },
+  changeGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginBottom: 12
+  },
+  changePill: {
     borderRadius: 8,
-    marginBottom: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6
+    padding: 10,
+    width: "48%"
+  },
+  changeLabel: {
+    color: "#555",
+    fontSize: 13,
+    fontWeight: "bold"
+  },
+  changeValue: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginTop: 3
+  },
+  detailRow: {
+    borderBottomColor: "#e0e0e0",
+    borderBottomWidth: 1,
+    paddingVertical: 10
+  },
+  detailHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8
+  },
+  percentBadge: {
+    fontSize: 14,
+    fontWeight: "bold",
+    marginLeft: 12
+  },
+  beforeAfterRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8
+  },
+  compareBlock: {
+    backgroundColor: "#F4FBFA",
+    borderRadius: 10,
+    flex: 1,
+    padding: 10
+  },
+  compareLabel: {
+    color: "#555",
+    fontSize: 12,
+    fontWeight: "bold",
+    marginBottom: 3
+  },
+  compareValue: {
+    color: "#123B36",
+    fontSize: 16,
+    fontWeight: "bold"
   }
 });

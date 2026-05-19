@@ -1,8 +1,8 @@
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useEffect, useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 const API_IP = "172.20.10.6"; // replace with your backend IP
 const API_BASE_URL = `http://${API_IP}:5000/api/history`;
@@ -124,6 +124,9 @@ export default function History() {
   });
   const [stages, setStages] = useState<StageCount[]>([]);
   const [loading, setLoading] = useState(true);
+  const [openProjects, setOpenProjects] = useState<string[]>([]);
+  const scrollRef = useRef<ScrollView>(null);
+  const projectPositions = useRef<Record<string, number>>({});
 
   useEffect(() => {
     const fetchJson = async (url: string) => {
@@ -288,6 +291,187 @@ export default function History() {
     );
   };
 
+  const toggleProject = (projectName: string) => {
+    const isOpen = openProjects.includes(projectName);
+
+    setOpenProjects((currentProjects) =>
+      isOpen
+        ? currentProjects.filter((name) => name !== projectName)
+        : [...currentProjects, projectName]
+    );
+
+    if (!isOpen) {
+      setTimeout(() => {
+        scrollRef.current?.scrollTo({
+          y: Math.max((projectPositions.current[projectName] ?? 0) - 12, 0),
+          animated: true
+        });
+      }, 100);
+    }
+  };
+
+  const renderProjectTimeline = (project: ProjectTimeline) => {
+    const isOpen = openProjects.includes(project.projectName);
+    const responseColor =
+      project.responseChange > 0
+        ? "#126B5D"
+        : project.responseChange < 0
+          ? "#9B1C1C"
+          : "#555";
+
+    return (
+      <View
+        style={styles.projectCard}
+        key={project.projectName}
+        onLayout={(event) => {
+          projectPositions.current[project.projectName] = event.nativeEvent.layout.y;
+        }}
+      >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ expanded: isOpen }}
+          onPress={() => toggleProject(project.projectName)}
+          style={styles.projectListRow}
+        >
+          <View style={styles.projectListMain}>
+            <Text style={styles.projectTitle}>
+              <MaterialCommunityIcons
+                name={project.projectType === "Django" ? "language-python" : "flask"}
+                size={24}
+                color={project.projectType === "Django" ? "#000000" : "#F05A28"}
+                style={{ marginRight: 8 }}
+              />{" "}
+              {project.projectName}
+            </Text>
+            <Text style={styles.insightDetail}>
+              Sprint 0 to {project.completedSprints}/
+              {project.totalSprints || project.completedSprints}
+            </Text>
+          </View>
+
+          <View style={styles.projectListMeta}>
+            <Text style={[styles.recordCount, { color: responseColor }]}>
+              {project.records.length} records
+            </Text>
+            <MaterialCommunityIcons
+              name={isOpen ? "chevron-up" : "chevron-down"}
+              size={24}
+              color="#123B36"
+            />
+          </View>
+        </Pressable>
+
+        {isOpen && (
+          <View style={styles.projectDetailPanel}>
+            <View style={styles.projectSummary}>
+              <View>
+                <Text style={styles.label}>Timeline Coverage</Text>
+                <Text style={styles.projectDetails}>
+                  Sprint 0 to {project.completedSprints}/
+                  {project.totalSprints || project.completedSprints}
+                </Text>
+              </View>
+              <Text style={styles.recordCount}>{project.records.length} records</Text>
+            </View>
+
+            <View style={styles.changeGrid}>
+              {renderChange("Complexity", project.complexityChange)}
+              {renderChange("Maintainability", project.maintainabilityChange)}
+              {renderChange("Smells Removed", project.smellsRemoved)}
+              {renderChange("Response Saved", project.responseChange, " ms")}
+            </View>
+
+            {project.records.map((record, index) => {
+              const isFirst = index === 0;
+              const isLatest = index === project.records.length - 1;
+              const stageColor = isLatest ? "#126B5D" : isFirst ? "#555" : "#36BBA7";
+
+              return (
+                <View style={styles.timelineRow} key={record.id}>
+                  <View style={styles.timelineRail}>
+                    <View style={[styles.timelineDot, { backgroundColor: stageColor }]} />
+                    {!isLatest ? <View style={styles.timelineLine} /> : null}
+                  </View>
+
+                  <View style={styles.timelineCard}>
+                    <View style={styles.timelineHeader}>
+                      <View>
+                        <Text style={styles.sprintTitle}>
+                          Sprint {toNumber(record.completed_sprints)}/
+                          {toNumber(record.total_sprints) || project.totalSprints}
+                        </Text>
+                        <Text style={styles.measuredAt}>
+                          {formatDate(record.measured_at)}
+                        </Text>
+                      </View>
+                      <Text
+                        style={[
+                          styles.stageBadge,
+                          { color: stageColor, borderColor: stageColor }
+                        ]}
+                      >
+                        {formatStage(record.measurement_stage)}
+                      </Text>
+                    </View>
+
+                    <View style={styles.metricsGrid}>
+                      <View style={styles.metricBlock}>
+                        <Text style={styles.metricLabel}>Complexity</Text>
+                        <Text style={styles.metricValue}>
+                          {formatNumber(record.cyclomatic_complexity)}
+                        </Text>
+                      </View>
+                      <View style={styles.metricBlock}>
+                        <Text style={styles.metricLabel}>Maintainability</Text>
+                        <Text style={styles.metricValue}>
+                          {formatNumber(record.maintainability_index)}
+                        </Text>
+                      </View>
+                      <View style={styles.metricBlock}>
+                        <Text style={styles.metricLabel}>Code Smells</Text>
+                        <Text style={styles.metricValue}>
+                          {formatInteger(record.code_smells)}
+                        </Text>
+                      </View>
+                      <View style={styles.metricBlock}>
+                        <Text style={styles.metricLabel}>Response</Text>
+                        <Text style={styles.metricValue}>
+                          {formatInteger(record.response_time_ms, " ms")}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.stageRow}>
+                      <Text style={styles.detailText}>
+                        Tasks: {formatInteger(record.completed_tasks)}/
+                        {formatInteger(record.total_tasks)}
+                      </Text>
+                      <Text style={styles.detailText}>
+                        Sprint progress: {formatNumber(
+                          toNumber(record.total_sprints)
+                            ? (toNumber(record.completed_sprints) /
+                                toNumber(record.total_sprints)) *
+                                100
+                            : 0,
+                          "%",
+                          0
+                        )}
+                      </Text>
+                    </View>
+
+                    {record.notes ? (
+                      <Text style={styles.notes}>Notes: {record.notes}</Text>
+                    ) : null}
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        )}
+      </View>
+    );
+  };
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -298,7 +482,11 @@ export default function History() {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      ref={scrollRef}
+      style={styles.container}
+      contentContainerStyle={styles.scrollContent}
+    >
       <Text style={styles.title}>Project Metrics History</Text>
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title" style={{ fontSize: 25 }}>
@@ -413,125 +601,7 @@ export default function History() {
           </Text>
         </View>
       ) : (
-        timelines.map((project) => (
-          <View style={styles.projectCard} key={project.projectName}>
-            <Text style={styles.projectTitle}>
-              <MaterialCommunityIcons
-                name={
-                  project.projectType === "Django" ? "language-python" : "flask"
-                }
-                size={24}
-                color={project.projectType === "Django" ? "#000000" : "#F05A28"}
-                style={{ marginRight: 8 }}
-              />{" "}
-              {project.projectName}
-            </Text>
-
-            <View style={styles.projectSummary}>
-              <View>
-                <Text style={styles.label}>Timeline Coverage</Text>
-                <Text style={styles.projectDetails}>
-                  Sprint 0 to {project.completedSprints}/
-                  {project.totalSprints || project.completedSprints}
-                </Text>
-              </View>
-              <Text style={styles.recordCount}>{project.records.length} records</Text>
-            </View>
-
-            <View style={styles.changeGrid}>
-              {renderChange("Complexity", project.complexityChange)}
-              {renderChange("Maintainability", project.maintainabilityChange)}
-              {renderChange("Smells Removed", project.smellsRemoved)}
-              {renderChange("Response Saved", project.responseChange, " ms")}
-            </View>
-
-            {project.records.map((record, index) => {
-              const isFirst = index === 0;
-              const isLatest = index === project.records.length - 1;
-              const stageColor = isLatest ? "#126B5D" : isFirst ? "#555" : "#36BBA7";
-
-              return (
-                <View style={styles.timelineRow} key={record.id}>
-                  <View style={styles.timelineRail}>
-                    <View style={[styles.timelineDot, { backgroundColor: stageColor }]} />
-                    {!isLatest ? <View style={styles.timelineLine} /> : null}
-                  </View>
-
-                  <View style={styles.timelineCard}>
-                    <View style={styles.timelineHeader}>
-                      <View>
-                        <Text style={styles.sprintTitle}>
-                          Sprint {toNumber(record.completed_sprints)}/
-                          {toNumber(record.total_sprints) || project.totalSprints}
-                        </Text>
-                        <Text style={styles.measuredAt}>
-                          {formatDate(record.measured_at)}
-                        </Text>
-                      </View>
-                      <Text
-                        style={[
-                          styles.stageBadge,
-                          { color: stageColor, borderColor: stageColor }
-                        ]}
-                      >
-                        {formatStage(record.measurement_stage)}
-                      </Text>
-                    </View>
-
-                    <View style={styles.metricsGrid}>
-                      <View style={styles.metricBlock}>
-                        <Text style={styles.metricLabel}>Complexity</Text>
-                        <Text style={styles.metricValue}>
-                          {formatNumber(record.cyclomatic_complexity)}
-                        </Text>
-                      </View>
-                      <View style={styles.metricBlock}>
-                        <Text style={styles.metricLabel}>Maintainability</Text>
-                        <Text style={styles.metricValue}>
-                          {formatNumber(record.maintainability_index)}
-                        </Text>
-                      </View>
-                      <View style={styles.metricBlock}>
-                        <Text style={styles.metricLabel}>Code Smells</Text>
-                        <Text style={styles.metricValue}>
-                          {formatInteger(record.code_smells)}
-                        </Text>
-                      </View>
-                      <View style={styles.metricBlock}>
-                        <Text style={styles.metricLabel}>Response</Text>
-                        <Text style={styles.metricValue}>
-                          {formatInteger(record.response_time_ms, " ms")}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.stageRow}>
-                      <Text style={styles.detailText}>
-                        Tasks: {formatInteger(record.completed_tasks)}/
-                        {formatInteger(record.total_tasks)}
-                      </Text>
-                      <Text style={styles.detailText}>
-                        Sprint progress: {formatNumber(
-                          toNumber(record.total_sprints)
-                            ? (toNumber(record.completed_sprints) /
-                                toNumber(record.total_sprints)) *
-                                100
-                            : 0,
-                          "%",
-                          0
-                        )}
-                      </Text>
-                    </View>
-
-                    {record.notes ? (
-                      <Text style={styles.notes}>Notes: {record.notes}</Text>
-                    ) : null}
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-        ))
+        timelines.map(renderProjectTimeline)
       )}
     </ScrollView>
   );
@@ -539,6 +609,9 @@ export default function History() {
 
 const styles = StyleSheet.create({
   container: { backgroundColor: "#0E2A25", flex: 1, padding: 16, paddingTop: 28 },
+  scrollContent: {
+    paddingBottom: 96
+  },
   title: { color: "#F4FBFA", fontSize: 24, fontWeight: "bold", marginBottom: 20 },
   titleContainer: {
     flexDirection: "row",
@@ -628,12 +701,33 @@ const styles = StyleSheet.create({
   stageCount: { fontSize: 15, fontWeight: "bold" },
   projectCard: {
     backgroundColor: "white",
-    padding: 12,
     borderRadius: 20,
     borderColor: "#36BBA7",
     borderWidth: 1,
     borderStyle: "dashed",
     marginBottom: 10
+  },
+  projectListRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10,
+    justifyContent: "space-between",
+    padding: 12
+  },
+  projectListMain: {
+    flex: 1,
+    paddingRight: 8
+  },
+  projectListMeta: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 4
+  },
+  projectDetailPanel: {
+    borderTopColor: "#e0e0e0",
+    borderTopWidth: 1,
+    padding: 12,
+    paddingTop: 8
   },
   projectTitle: { color: "#123B36", fontSize: 20, fontWeight: "bold", marginBottom: 8 },
   projectSummary: {

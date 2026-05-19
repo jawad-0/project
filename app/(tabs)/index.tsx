@@ -3,11 +3,15 @@ import { Image } from "expo-image";
 import { HelloWave } from "@/components/hello-wave";
 import ParallaxScrollView from "@/components/parallax-scroll-view";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { StyleSheet, Text, View } from "react-native";
+import { DevSettings, Pressable, StyleSheet, Text, View } from "react-native";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 
 export default function HomeScreen() {
+  const refreshApp = () => {
+    DevSettings.reload();
+  };
+
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: "#123B36", dark: "#071B18" }}
@@ -18,12 +22,26 @@ export default function HomeScreen() {
         />
       }
     >
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title" style={styles.screenTitle}>
-          Research Portfolio
-        </ThemedText>
-        <HelloWave />
-      </ThemedView>
+      <View style={styles.topRow}>
+        <ThemedView style={styles.titleContainer}>
+          <ThemedText type="title" style={styles.screenTitle}>
+            Research Portfolio
+          </ThemedText>
+          <HelloWave />
+        </ThemedView>
+
+        <Pressable
+          accessibilityLabel="Refresh app data"
+          accessibilityRole="button"
+          onPress={refreshApp}
+          style={({ pressed }) => [
+            styles.refreshButton,
+            pressed ? styles.refreshButtonPressed : null
+          ]}
+        >
+          <MaterialCommunityIcons name="refresh" size={24} color="#F4FBFA" />
+        </Pressable>
+      </View>
 
       <View style={styles.heroCard}>
         <MaterialCommunityIcons
@@ -106,6 +124,12 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  topRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10,
+    justifyContent: "space-between"
+  },
   titleContainer: {
     backgroundColor: "#0F766E",
     borderColor: "#36BBA7",
@@ -114,11 +138,26 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+    flex: 1,
     paddingHorizontal: 14,
     paddingVertical: 10
   },
   screenTitle: {
-    color: "white"
+    color: "white",
+    fontSize: 28,
+  },
+  refreshButton: {
+    alignItems: "center",
+    backgroundColor: "#0F766E",
+    borderColor: "#36BBA7",
+    borderRadius: 14,
+    borderWidth: 1,
+    height: 48,
+    justifyContent: "center",
+    width: 48
+  },
+  refreshButtonPressed: {
+    opacity: 0.75
   },
   heroCard: {
     alignItems: "center",
