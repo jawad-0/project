@@ -302,7 +302,7 @@ export default function History() {
       <Text style={styles.title}>Project Metrics History</Text>
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title" style={{ fontSize: 25 }}>
-          HISTORY
+          OVERALL SUMMARY
         </ThemedText>
       </ThemedView>
 
@@ -400,7 +400,7 @@ export default function History() {
 
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title" style={{ fontSize: 25 }}>
-          SPRINT TIMELINE
+          SPRINT 0 TO LATEST
         </ThemedText>
       </ThemedView>
 
@@ -543,7 +543,7 @@ const styles = StyleSheet.create({
   titleContainer: {
     flexDirection: "row",
     marginBottom: 10,
-    backgroundColor: "#126B5D",
+    backgroundColor: "#047857",
     width: "100%",
     borderRadius: 10,
     borderColor: "#36BBA7",

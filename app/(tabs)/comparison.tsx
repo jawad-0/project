@@ -376,7 +376,7 @@ export default function Comparison() {
       <Text style={styles.title}>Previous Sprint vs Now</Text>
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title" style={{ fontSize: 25 }}>
-          COMPARISON
+          SPRINT DELTA SUMMARY
         </ThemedText>
       </ThemedView>
 
@@ -473,7 +473,7 @@ export default function Comparison() {
         <>
           <ThemedView style={styles.titleContainer}>
             <ThemedText type="title" style={{ fontSize: 25 }}>
-              BY TYPE
+              TYPE COMPARISON
             </ThemedText>
           </ThemedView>
 
@@ -512,7 +512,7 @@ const styles = StyleSheet.create({
   titleContainer: {
     flexDirection: "row",
     marginBottom: 10,
-    backgroundColor: "#126B5D",
+    backgroundColor: "#7C3AED",
     width: "100%",
     borderRadius: 10,
     borderColor: "#36BBA7",

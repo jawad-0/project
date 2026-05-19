@@ -280,7 +280,7 @@ export default function Dashboard() {
             fontSize: 25
           }}
         >
-          DASHBOARD
+          PROJECT SNAPSHOT
         </ThemedText>
       </ThemedView>
       {/* Summary Cards */}
@@ -313,7 +313,7 @@ export default function Dashboard() {
       <View style={styles.analysisSection}>
         <ThemedView style={styles.titleContainer}>
           <ThemedText type="title" style={{ fontSize: 25 }}>
-            ANALYSIS
+            IMPROVEMENT ANALYSIS
           </ThemedText>
         </ThemedView>
 
@@ -412,7 +412,7 @@ export default function Dashboard() {
               fontSize: 25
             }}
           >
-            STATISTICS
+            PROJECT BREAKDOWN
           </ThemedText>
         </ThemedView>
         {analysedProjects.map((project) => (
@@ -512,7 +512,7 @@ const styles = StyleSheet.create({
   titleContainer: {
     flexDirection: "row",
     marginBottom: 10,
-    backgroundColor: "#126B5D",
+    backgroundColor: "#0F766E",
     width: "100%",
     borderRadius: 10,
     borderColor: "#36BBA7",

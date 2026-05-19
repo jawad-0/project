@@ -304,7 +304,7 @@ export default function Metrics() {
       <Text style={styles.title}>Code Quality Metrics</Text>
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title" style={{ fontSize: 25 }}>
-          METRICS
+          QUALITY SUMMARY
         </ThemedText>
       </ThemedView>
 
@@ -342,7 +342,7 @@ export default function Metrics() {
 
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title" style={{ fontSize: 25 }}>
-          SPRINT METRICS
+          SPRINT QUALITY DETAIL
         </ThemedText>
       </ThemedView>
 
@@ -410,7 +410,7 @@ const styles = StyleSheet.create({
   titleContainer: {
     flexDirection: "row",
     marginBottom: 10,
-    backgroundColor: "#126B5D",
+    backgroundColor: "#1D4ED8",
     width: "100%",
     borderRadius: 10,
     borderColor: "#36BBA7",

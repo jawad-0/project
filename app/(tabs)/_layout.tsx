@@ -22,7 +22,11 @@ export default function TabLayout() {
         },
         tabBarInactiveTintColor: "#D9F4EF",
         tabBarLabelStyle: {
+          fontSize: 11,
           fontWeight: "700"
+        },
+        tabBarItemStyle: {
+          paddingVertical: 4
         }
       }}
     >
@@ -30,8 +34,8 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Home",
+          tabBarLabel: "Home",
           tabBarIcon: ({ color }) => (
-            // <IconSymbol size={28} name="house.fill" color={color} />
             <MaterialCommunityIcons name="home" size={24} color={color} />
           )
         }}
@@ -40,9 +44,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="explore"
         options={{
-          title: "Explore",
+          title: "Research Scope",
+          tabBarLabel: "Research",
           tabBarIcon: ({ color }) => (
-            // <IconSymbol size={28} name="paperplane.fill" color={color} />
             <MaterialCommunityIcons name="compass" size={24} color={color} />
           )
         }}
@@ -51,10 +55,11 @@ export default function TabLayout() {
       <Tabs.Screen
         name="dashboard"
         options={{
-          title: "Dashboard",
+          title: "Project Dashboard",
+          tabBarLabel: "Projects",
           tabBarIcon: ({ color }) => (
             <MaterialCommunityIcons
-              name="view-dashboard"
+              name="view-dashboard-outline"
               size={24}
               color={color}
             />
@@ -65,9 +70,14 @@ export default function TabLayout() {
       <Tabs.Screen
         name="metrics"
         options={{
-          title: "Metrics",
+          title: "Quality Metrics",
+          tabBarLabel: "Quality",
           tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="chart-bar" size={24} color={color} />
+            <MaterialCommunityIcons
+              name="chart-box-outline"
+              size={24}
+              color={color}
+            />
           )
         }}
       />
@@ -75,9 +85,14 @@ export default function TabLayout() {
       <Tabs.Screen
         name="comparison"
         options={{
-          title: "Comparison",
+          title: "Sprint Comparison",
+          tabBarLabel: "Compare",
           tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="compare" size={24} color={color} />
+            <MaterialCommunityIcons
+              name="compare-horizontal"
+              size={24}
+              color={color}
+            />
           )
         }}
       />
@@ -85,7 +100,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="performance"
         options={{
-          title: "Performance",
+          title: "API Performance",
+          tabBarLabel: "Speed",
           tabBarIcon: ({ color }) => (
             <MaterialCommunityIcons
               name="speedometer"
@@ -99,9 +115,14 @@ export default function TabLayout() {
       <Tabs.Screen
         name="history"
         options={{
-          title: "History",
+          title: "Sprint History",
+          tabBarLabel: "Sprints",
           tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="history" size={24} color={color} />
+            <MaterialCommunityIcons
+              name="timeline-clock-outline"
+              size={24}
+              color={color}
+            />
           )
         }}
       />

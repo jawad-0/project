@@ -305,7 +305,7 @@ export default function Performance() {
       <Text style={styles.title}>API Performance</Text>
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title" style={{ fontSize: 25 }}>
-          PERFORMANCE
+          RESPONSE SUMMARY
         </ThemedText>
       </ThemedView>
 
@@ -348,7 +348,7 @@ export default function Performance() {
 
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title" style={{ fontSize: 25 }}>
-          PREVIOUS VS NOW
+          RESPONSE DELTA
         </ThemedText>
       </ThemedView>
 
@@ -446,7 +446,7 @@ export default function Performance() {
         <>
           <ThemedView style={styles.titleContainer}>
             <ThemedText type="title" style={{ fontSize: 25 }}>
-              BY TYPE
+              SPEED BY TYPE
             </ThemedText>
           </ThemedView>
 
@@ -485,7 +485,7 @@ const styles = StyleSheet.create({
   titleContainer: {
     flexDirection: "row",
     marginBottom: 10,
-    backgroundColor: "#126B5D",
+    backgroundColor: "#FF5100",
     width: "100%",
     borderRadius: 10,
     borderColor: "#36BBA7",

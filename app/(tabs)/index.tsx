@@ -20,13 +20,17 @@ export default function HomeScreen() {
     >
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title" style={styles.screenTitle}>
-          Welcome to Derby Uni!
+          Research Portfolio
         </ThemedText>
         <HelloWave />
       </ThemedView>
 
       <View style={styles.heroCard}>
-        <MaterialCommunityIcons name="chart-timeline-variant" size={34} color="#126B5D" />
+        <MaterialCommunityIcons
+          name="chart-timeline-variant"
+          size={34}
+          color="#126B5D"
+        />
         <View style={styles.heroText}>
           <ThemedText type="subtitle" style={styles.cardHeading}>
             Refactoring Impact Analysis
@@ -40,7 +44,11 @@ export default function HomeScreen() {
 
       <View style={styles.widgetGrid}>
         <View style={styles.widgetCard}>
-          <MaterialCommunityIcons name="language-python" size={24} color="#123B36" />
+          <MaterialCommunityIcons
+            name="language-python"
+            size={24}
+            color="#123B36"
+          />
           <Text style={styles.widgetValue}>Django</Text>
           <Text style={styles.widgetLabel}>Monolithic baseline</Text>
         </View>
@@ -50,12 +58,20 @@ export default function HomeScreen() {
           <Text style={styles.widgetLabel}>Microservice comparison</Text>
         </View>
         <View style={styles.widgetCard}>
-          <MaterialCommunityIcons name="source-branch" size={24} color="#126B5D" />
+          <MaterialCommunityIcons
+            name="source-branch"
+            size={24}
+            color="#126B5D"
+          />
           <Text style={styles.widgetValue}>Sprint 0+</Text>
           <Text style={styles.widgetLabel}>History timeline</Text>
         </View>
         <View style={styles.widgetCard}>
-          <MaterialCommunityIcons name="speedometer" size={24} color="#9B1C1C" />
+          <MaterialCommunityIcons
+            name="speedometer"
+            size={24}
+            color="#9B1C1C"
+          />
           <Text style={styles.widgetValue}>API</Text>
           <Text style={styles.widgetLabel}>Performance review</Text>
         </View>
@@ -65,19 +81,25 @@ export default function HomeScreen() {
         <ThemedText type="subtitle" style={styles.sectionTitle}>
           Research Details
         </ThemedText>
-        <ThemedText>Name: Muhammad Jawad</ThemedText>
-        <ThemedText>Student ID: 100772938</ThemedText>
-        <ThemedText>Module: Independent Scholarship</ThemedText>
-        <ThemedText>Code: 2025-SPR-KED-7CS997</ThemedText>
-        <ThemedText type="subtitle">
-          Project Title:{" "}
-          <Text style={{ color: "#126B5D" }}>
-            Analysis of Refactoring Impact on Monolithic Django and
-            Microservice-Based Flask Applications
-          </Text>
+        <ThemedText style={styles.cardCopy}>Name: Muhammad Jawad</ThemedText>
+        <ThemedText style={styles.cardCopy}>Student ID: 100772938</ThemedText>
+        <ThemedText style={styles.cardCopy}>
+          Module: Independent Scholarship
         </ThemedText>
-        <ThemedText>MSc: IT</ThemedText>
-        <ThemedText>Supervisor: Mubeen Aslam</ThemedText>
+        <ThemedText style={styles.cardCopy}>
+          Code: 2025-SPR-KED-7CS997
+        </ThemedText>
+        <ThemedText style={styles.cardCopy}>MSc: IT</ThemedText>
+        <ThemedText style={styles.cardCopy}>
+          Supervisor: Mubeen Aslam
+        </ThemedText>
+        <ThemedText type="subtitle" style={styles.sectionTitle}>
+          Project Title{" "}
+        </ThemedText>
+        <ThemedText style={{ color: "#126B5D" }}>
+          Analysis of Refactoring Impact on Monolithic Django and
+          Microservice-Based Flask Applications
+        </ThemedText>
       </ThemedView>
     </ParallaxScrollView>
   );
@@ -85,7 +107,7 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   titleContainer: {
-    backgroundColor: "#126B5D",
+    backgroundColor: "#0F766E",
     borderColor: "#36BBA7",
     borderRadius: 14,
     borderWidth: 1,
@@ -116,7 +138,7 @@ const styles = StyleSheet.create({
     color: "#123B36"
   },
   cardCopy: {
-    color: "#35524C",
+    color: "#126B5D",
     marginTop: 4
   },
   widgetGrid: {

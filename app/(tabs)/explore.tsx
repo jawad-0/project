@@ -22,7 +22,7 @@ export default function TabTwoScreen() {
     >
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title" style={styles.screenTitle}>
-          Introduction
+          Research Context
         </ThemedText>
       </ThemedView>
 
@@ -55,7 +55,7 @@ export default function TabTwoScreen() {
 
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title" style={styles.screenTitle}>
-          Objectives
+          Application Goals
         </ThemedText>
       </ThemedView>
 
@@ -84,7 +84,7 @@ const styles = StyleSheet.create({
     position: "absolute"
   },
   titleContainer: {
-    backgroundColor: "#126B5D",
+    backgroundColor: "#155E75",
     borderColor: "#36BBA7",
     borderRadius: 14,
     borderWidth: 1,
