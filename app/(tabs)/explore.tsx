@@ -72,6 +72,42 @@ export default function TabTwoScreen() {
           </View>
         ))}
       </View>
+
+      <ThemedView style={styles.titleContainer}>
+        <ThemedText type="title" style={styles.screenTitle}>
+          Future Enhancements
+        </ThemedText>
+      </ThemedView>
+
+      <View style={styles.objectiveCard}>
+        {[
+          {
+            icon: "target",
+            text: "Set performance targets for every project"
+          },
+          {
+            icon: "checkbox-marked-circle-outline",
+            text: "Track completed and pending tasks against each target"
+          },
+          {
+            icon: "progress-check",
+            text: "Show how task progress improves code quality and response time"
+          },
+          {
+            icon: "flag-checkered",
+            text: "Highlight projects that achieve the best performance goal"
+          }
+        ].map((enhancement) => (
+          <View style={styles.objectiveRow} key={enhancement.text}>
+            <MaterialCommunityIcons
+              name={enhancement.icon as keyof typeof MaterialCommunityIcons.glyphMap}
+              size={18}
+              color="#126B5D"
+            />
+            <Text style={styles.objectiveText}>{enhancement.text}</Text>
+          </View>
+        ))}
+      </View>
     </ParallaxScrollView>
   );
 }
